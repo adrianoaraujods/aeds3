@@ -1,5 +1,7 @@
 import z from "zod";
 
+import { formatNumber } from "./utils";
+
 export type State = (typeof STATES)[number];
 export const STATES = [
   "Completo",
@@ -16,23 +18,23 @@ export const CURRENCIES = ["BRL", "USD"] as const;
 
 export type Client = z.infer<typeof clientSchema>;
 export const clientSchema = z.object({
-  document: z
+  document: z // primary key (CNPJ | CPF)
     .string()
     .min(11)
     .max(14)
-    .regex(/[^0-9]/g), // primary key (CNPJ | CPF)
-  registration: z
+    .transform((string) => formatNumber(string)),
+  registration: z // Inscrição Estatual
     .string()
     .min(9)
     .max(13)
-    .regex(/[^0-9]/g), // Inscrição Estatual
+    .transform((string) => formatNumber(string)),
   socialName: z.string(), // Razão Social
   name: z.string(),
   email: z.email(),
   cellphone: z
     .string()
     .min(10)
-    .regex(/[^0-9]/g),
+    .transform((string) => formatNumber(string)),
   payment: z.number().min(0).max(255),
   currency: z.enum([...CURRENCIES]),
   // address

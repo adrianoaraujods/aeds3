@@ -208,7 +208,9 @@ export class ByteFile<TSchema extends z.ZodObject<any>> {
     let totalSize = 1;
 
     // Create Primary key buffer
-    const primaryKeyType = shape[this.primaryKey].def.type;
+    const primaryKeyType =
+      (shape[this.primaryKey].def.in && shape[this.primaryKey].def.in.type) ||
+      shape[this.primaryKey].def.type;
     const primaryKeySize = this.sizes[this.primaryKey];
     const primaryKeyValue = data[this.primaryKey];
     const buffer = Buffer.alloc(primaryKeySize);
@@ -233,7 +235,8 @@ export class ByteFile<TSchema extends z.ZodObject<any>> {
 
     // Creates missing keys buffers
     for (const key of keys) {
-      const { type } = shape[key].def;
+      const type =
+        (shape[key].def.in && shape[key].def.in.type) || shape[key].def.type;
       const size = this.sizes[key];
       const value = data[key];
 
@@ -295,7 +298,9 @@ export class ByteFile<TSchema extends z.ZodObject<any>> {
     const result: Record<any, any> = {};
     let offset = 0;
 
-    const primaryKeyType = shape[this.primaryKey].def.type;
+    const primaryKeyType =
+      (shape[this.primaryKey].def.in && shape[this.primaryKey].def.in.type) ||
+      shape[this.primaryKey].def.type;
     const primaryKeySize = this.sizes[this.primaryKey];
 
     // Write Primary key buffer
@@ -318,7 +323,8 @@ export class ByteFile<TSchema extends z.ZodObject<any>> {
     offset += primaryKeySize;
 
     for (const key of keys) {
-      const { type } = shape[key].def;
+      const type =
+        (shape[key].def.in && shape[key].def.in.type) || shape[key].def.type;
       const size = this.sizes[key];
 
       switch (type) {
@@ -332,8 +338,8 @@ export class ByteFile<TSchema extends z.ZodObject<any>> {
 
           break;
         case "number":
-          result[key] = data.readUIntBE(offset, size);
-          offset += size / 100;
+          result[key] = data.readUIntBE(offset, size) / 100;
+          offset += size;
 
           break;
         case "boolean":

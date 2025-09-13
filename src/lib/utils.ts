@@ -7,6 +7,10 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+function formatNumber(value: string) {
+  return value.replace(/[^0-9]/g, "");
+}
+
 function formatCPF(value: string) {
   value = value.replace(/\D/g, "");
   value = value.replace(/(\d{3})(\d)/, "$1.$2");
@@ -38,4 +42,4 @@ const formatPhone = (value: string) => {
   return value;
 };
 
-export { cn, formatCPF, formatCNPJ, formatPhone };
+export { cn, formatNumber, formatCPF, formatCNPJ, formatPhone };
