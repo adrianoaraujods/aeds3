@@ -9,7 +9,7 @@ import { email } from "zod";
 import { useAppForm } from "@/hooks/use-app-form";
 import { useData } from "@/hooks/use-data";
 import { CURRENCIES } from "@/lib/schemas";
-import { createClient, updateClient } from "@/actions/client";
+import { createClient, deleteClient, updateClient } from "@/actions/client";
 import { SelectOption } from "@/components/layout/form";
 import { DataTable } from "@/components/table/data-table";
 import { Heading } from "@/components/typography/heading";
@@ -24,9 +24,34 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-import { PencilIcon } from "lucide-react";
+import {
+  CircleEllipsisIcon,
+  EllipsisIcon,
+  PencilIcon,
+  Trash2Icon,
+} from "lucide-react";
 
 import type { Client, Currency } from "@/lib/schemas";
+
+import { Text } from "../typography/text";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 
 const currencies: { [currency in Currency]: Omit<SelectOption, "value"> } = {
   BRL: { title: "Real" },
@@ -145,7 +170,7 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
           e.stopPropagation();
         }}
       >
-        <DialogTrigger asChild>{trigger}</DialogTrigger>
+        {trigger}
 
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
@@ -439,17 +464,7 @@ function ClientTable() {
       {
         accessorKey: "more",
         header: "",
-        cell: ({ row }) => (
-          <ClientDialog
-            initialValues={row.original}
-            type="edit"
-            trigger={
-              <Button variant="ghost" size="icon">
-                <PencilIcon className="size-5" />
-              </Button>
-            }
-          />
-        ),
+        cell: ({ row }) => <ClientTableRowMenu client={row.original} />,
       },
     ],
     data: data.clients,
@@ -457,6 +472,100 @@ function ClientTable() {
   });
 
   return <DataTable table={table} />;
+}
+
+function ClientTableRowMenu({ client }: { client: Client }) {
+  const { setData } = useData();
+
+  async function handleDelete() {
+    const res = await deleteClient(client.document);
+
+    if (res.ok) {
+      setData((prev) => ({
+        ...prev,
+        clients: prev.clients.filter(
+          ({ document }) => document !== client.document
+        ),
+      }));
+
+      toast.success("Cliente deletado com sucesso!");
+      return;
+    }
+
+    switch (res.status) {
+      case 409:
+        toast.warning(
+          "Não é possível excluir um cliente com outros registros."
+        );
+        break;
+      case 500:
+        toast.error(
+          "Erro interno do servidor. Não foi possível excluir o cliente, tente novamente."
+        );
+        break;
+      default:
+        toast.error(
+          "Existem dados corrompidos no Banco de Dados. Não foi possível excluir o cliente."
+        );
+    }
+  }
+
+  return (
+    <ClientDialog
+      initialValues={client}
+      type="edit"
+      trigger={
+        <AlertDialog>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="icon" variant="outline">
+                <EllipsisIcon className="size-5" />
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end">
+              <DropdownMenuGroup>
+                <DialogTrigger asChild>
+                  <DropdownMenuItem>
+                    <PencilIcon />
+
+                    <Text>Editar</Text>
+                  </DropdownMenuItem>
+                </DialogTrigger>
+
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuItem variant="destructive">
+                    <Trash2Icon />
+
+                    <Text>Deletar</Text>
+                  </DropdownMenuItem>
+                </AlertDialogTrigger>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Essa ação não pode ser desfeita. Isso irá remover
+                permanentemente esse cliente e todos os seus pedidos e cotações
+                associados.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <Button variant="destructive" asChild>
+                <AlertDialogAction onClick={() => handleDelete()}>
+                  Excluir
+                </AlertDialogAction>
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      }
+    />
+  );
 }
 
 export { ClientDialog, ClientTable };

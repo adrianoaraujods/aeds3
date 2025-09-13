@@ -5,6 +5,7 @@ import { Section } from "@/components/layout/section";
 import { Heading } from "@/components/typography/heading";
 import { Text } from "@/components/typography/text";
 import { Button } from "@/components/ui/button";
+import { DialogTrigger } from "@/components/ui/dialog";
 
 import { PlusCircleIcon } from "lucide-react";
 
@@ -40,11 +41,13 @@ export default function ClientsPage() {
           initialValues={defaultClient}
           type="create"
           trigger={
-            <Button variant="outline">
-              <PlusCircleIcon />
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <PlusCircleIcon />
 
-              <Text>Adicionar</Text>
-            </Button>
+                <Text>Adicionar</Text>
+              </Button>
+            </DialogTrigger>
           }
         />
       </header>

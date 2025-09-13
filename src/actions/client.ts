@@ -47,12 +47,16 @@ async function updateClient(
   document: Client["document"],
   patch: Client
 ): Promise<ActionResponse<Client>> {
+  // TODO: if the primary key changes, then update other files
+
   return file.update(document, patch);
 }
 
 async function deleteClient(
   document: Client["document"]
 ): Promise<ActionResponse> {
+  // TODO: only delete if there is no association with this client
+
   return file.delete(document);
 }
 

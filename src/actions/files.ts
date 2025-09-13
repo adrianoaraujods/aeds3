@@ -1,5 +1,5 @@
 import * as fs from "fs";
-import { z } from "zod";
+import { boolean, z } from "zod";
 
 import type { ActionResponse } from "@/lib/config";
 
@@ -30,15 +30,15 @@ export class ByteFile<TSchema extends z.ZodObject<any>> {
       return { ok: false, status: 400 };
     }
 
+    const foundResponse = this.get(parser.data[this.primaryKey]);
+
+    if (foundResponse.ok) {
+      return { ok: false, status: 409 };
+    } else if (foundResponse.status !== 404) {
+      return { ok: false, status: foundResponse.status };
+    }
+
     try {
-      const foundResponse = this.get(parser.data[this.primaryKey]);
-
-      if (foundResponse.ok) {
-        return { ok: false, status: 409 };
-      } else if (foundResponse.status !== 404) {
-        return { ok: false, status: foundResponse.status };
-      }
-
       const buffer = this.serialize(parser.data, false);
       fs.appendFileSync(this.filePath, buffer);
 
@@ -57,12 +57,9 @@ export class ByteFile<TSchema extends z.ZodObject<any>> {
 
     try {
       const buffer = fs.readFileSync(this.filePath);
-      let offset = 0;
+      let offset = 4; // skip size bytes
 
-      const amount = buffer.readIntBE(offset, 4);
-      offset += 4;
-
-      let validCount = 0;
+      let invalidData = false;
       while (offset < buffer.length) {
         const size = buffer.readIntBE(offset, 4);
         offset += 4;
@@ -72,13 +69,13 @@ export class ByteFile<TSchema extends z.ZodObject<any>> {
 
         if (!isDead) {
           const data = this.deserialize(buffer.subarray(offset, offset + size));
-          const parsedData = this.schema.safeParse(data);
+          const parser = this.schema.safeParse(data);
 
-          if (parsedData.success) {
-            results.push(parsedData.data);
-            validCount++;
+          if (parser.success) {
+            results.push(parser.data);
           } else {
-            console.error(parsedData.error);
+            console.error(parser.error);
+            invalidData = true;
           }
         }
 
@@ -87,7 +84,7 @@ export class ByteFile<TSchema extends z.ZodObject<any>> {
 
       return {
         ok: true,
-        status: validCount === amount ? 200 : 209,
+        status: invalidData ? 209 : 200,
         data: results,
       };
     } catch (error: any) {
@@ -112,12 +109,9 @@ export class ByteFile<TSchema extends z.ZodObject<any>> {
 
     try {
       const buffer = fs.readFileSync(this.filePath);
-      let offset = 0;
+      let offset = 4; // skip size bytes
 
-      const amount = buffer.readIntBE(offset, 4);
-      offset += 4;
-
-      let validCount = 0;
+      let invalidData = false;
       while (offset < buffer.length) {
         const size = buffer.readIntBE(offset, 4);
         offset += 4;
@@ -131,23 +125,22 @@ export class ByteFile<TSchema extends z.ZodObject<any>> {
 
           if (parser.success) {
             if (data[this.primaryKey] === key) {
-              return { ok: true, status: 200, data: parser.data };
+              return {
+                ok: true,
+                status: invalidData ? 209 : 200,
+                data: parser.data,
+              };
             }
-
-            validCount++;
           } else {
             console.error(parser.error);
+            invalidData = true;
           }
         }
 
         offset += size;
       }
 
-      if (validCount === amount) {
-        return { ok: false, status: 404 };
-      }
-
-      return { ok: false, status: 509 };
+      return { ok: false, status: invalidData ? 509 : 404 };
     } catch (error: any) {
       if (error.code === "ENOENT") {
         this.createFile();
@@ -161,16 +154,129 @@ export class ByteFile<TSchema extends z.ZodObject<any>> {
     return { ok: false, status: 500 };
   }
 
-  // TODO
   public update(
     key: z.infer<TSchema>[typeof this.primaryKey],
     patch: z.infer<TSchema>
   ): ActionResponse<z.infer<TSchema>> {
+    const parser = this.schema.safeParse(patch);
+
+    if (!parser.success || typeof key !== typeof this.primaryKey) {
+      return { ok: false, status: 400 };
+    }
+
+    try {
+      const buffer = fs.readFileSync(this.filePath);
+      let offset = 4; // skip size bytes
+
+      let deletedOffset = 0;
+
+      let invalidData = false;
+      while (offset < buffer.length) {
+        const size = buffer.readIntBE(offset, 4);
+        offset += 4;
+
+        const isDead = buffer.readIntBE(offset, 1) === 1;
+        offset += 1;
+
+        if (!isDead) {
+          const data = this.deserialize(buffer.subarray(offset, offset + size));
+          const parser = this.schema.safeParse(data);
+
+          if (parser.success) {
+            if (parser.data[this.primaryKey] === patch[this.primaryKey]) {
+              return { ok: false, status: 409 };
+            }
+
+            if (parser.data[this.primaryKey] === key) {
+              deletedOffset = offset - 1;
+            }
+          } else {
+            console.error(parser.error);
+            invalidData = true;
+          }
+        }
+
+        offset += size;
+      }
+
+      if (deletedOffset === 0) {
+        return { ok: false, status: 404 };
+      }
+
+      // kill previous value
+      buffer.writeUIntBE(1, deletedOffset, 1);
+
+      // overwrites the file with the updated data
+      const patchBuffer = this.serialize(parser.data, false);
+      const updatedBuffer = Buffer.concat([buffer, patchBuffer]);
+      fs.writeFileSync(this.filePath, updatedBuffer);
+
+      return { ok: true, status: invalidData ? 209 : 200, data: parser.data };
+    } catch (error: any) {
+      if (error.code === "ENOENT") {
+        this.createFile();
+
+        return { ok: false, status: 404 };
+      }
+
+      console.error(error);
+    }
+
     return { ok: false, status: 500 };
   }
 
-  // TODO
   public delete(key: z.infer<TSchema>[typeof this.primaryKey]): ActionResponse {
+    if (typeof key !== typeof this.primaryKey) {
+      return { ok: false, status: 400 };
+    }
+
+    try {
+      const buffer = fs.readFileSync(this.filePath);
+      let offset = 4; // skip amount bytes
+
+      let invalidData = false;
+      while (offset < buffer.length) {
+        const size = buffer.readIntBE(offset, 4);
+        offset += 4;
+
+        const isDead = buffer.readIntBE(offset, 1) === 1;
+        offset += 1;
+
+        if (!isDead) {
+          const data = this.deserialize(buffer.subarray(offset, offset + size));
+          const parser = this.schema.safeParse(data);
+
+          if (parser.success) {
+            if (data[this.primaryKey] === key) {
+              buffer.writeUIntBE(1, offset - 1, 1);
+              fs.writeFileSync(this.filePath, buffer);
+
+              return {
+                ok: true,
+                status: invalidData ? 209 : 204,
+                data: undefined,
+              };
+            }
+          } else {
+            console.error(parser.error);
+            invalidData = true;
+          }
+        }
+
+        offset += size;
+      }
+
+      return { ok: false, status: invalidData ? 509 : 404 };
+    } catch (error: any) {
+      if (error.code === "ENOENT") {
+        this.createFile();
+
+        return { ok: false, status: 404 };
+      }
+
+      console.error(error);
+    }
+
     return { ok: false, status: 500 };
   }
 
