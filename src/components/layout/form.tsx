@@ -38,11 +38,24 @@ function TextField({
       className={cn("grid gap-2", containerProps?.className)}
       {...containerProps}
     >
-      <Label htmlFor={props.id || field.name} {...labelProps}>
+      <Label
+        className={cn(
+          "data-[error=true]:text-destructive",
+          labelProps?.className
+        )}
+        htmlFor={props.id || field.name}
+        data-error={field.state.meta.errors.length > 0}
+        {...labelProps}
+      >
         {labelProps?.children || label}
       </Label>
 
       <Input
+        className={cn(
+          "dark:data-[error=true]:bg-destructive/10 data-[error=true]:bg-destructive/10 dark:data-[error=true]:hover:bg-destructive/20 data-[error=true]:hover:bg-destructive/20",
+          props.className
+        )}
+        data-error={field.state.meta.errors.length > 0}
         id={props.id || field.name}
         value={field.state.value}
         onChange={(e) =>
@@ -52,6 +65,10 @@ function TextField({
         }
         {...props}
       />
+
+      <Text size="sm" variant="destructive" asChild>
+        <em role="alert">{field.state.meta.errors.join(", ")}</em>
+      </Text>
     </div>
   );
 }
@@ -83,7 +100,15 @@ function SelectField({
       className={cn("grid gap-2", containerProps?.className)}
       {...containerProps}
     >
-      <Label htmlFor={props.id || field.name} {...labelProps}>
+      <Label
+        className={cn(
+          "data-[error=true]:text-destructive",
+          labelProps?.className
+        )}
+        htmlFor={props.id || field.name}
+        data-error={field.state.meta.errors.length > 0}
+        {...labelProps}
+      >
         {labelProps?.children || label}
       </Label>
 
@@ -93,7 +118,11 @@ function SelectField({
         {...selectProps}
       >
         <SelectTrigger
-          className={cn("w-full", triggerProps?.className)}
+          className={cn(
+            "dark:data-[error=true]:bg-destructive/10 data-[error=true]:bg-destructive/10 dark:data-[error=true]:hover:bg-destructive/20 data-[error=true]:hover:bg-destructive/20 w-full",
+            triggerProps?.className
+          )}
+          data-error={field.state.meta.errors.length > 0}
           id={props.id || field.name}
           {...triggerProps}
         >
@@ -112,6 +141,10 @@ function SelectField({
           </SelectGroup>
         </SelectContent>
       </Select>
+
+      <Text size="sm" variant="destructive" asChild>
+        <em role="alert">{field.state.meta.errors.join(", ")}</em>
+      </Text>
     </div>
   );
 }
@@ -149,17 +182,34 @@ function DocumentNumberField({
       className={cn("grid gap-2", containerProps?.className)}
       {...containerProps}
     >
-      <Label htmlFor={props.id || field.name} {...labelProps}>
+      <Label
+        className={cn(
+          "data-[error=true]:text-destructive",
+          labelProps?.className
+        )}
+        htmlFor={props.id || field.name}
+        data-error={field.state.meta.errors.length > 0}
+        {...labelProps}
+      >
         {labelProps?.children || label}
       </Label>
 
       <Input
+        className={cn(
+          "dark:data-[error=true]:bg-destructive/10 data-[error=true]:bg-destructive/10 dark:data-[error=true]:hover:bg-destructive/20 data-[error=true]:hover:bg-destructive/20",
+          props.className
+        )}
+        data-error={field.state.meta.errors.length > 0}
         id={props.id || field.name}
         value={displayValue}
         onChange={handleInputChange}
         type="text"
         {...props}
       />
+
+      <Text size="sm" variant="destructive" asChild>
+        <em role="alert">{field.state.meta.errors.join(", ")}</em>
+      </Text>
     </div>
   );
 }
@@ -190,17 +240,34 @@ function PhoneField({
       className={cn("grid gap-2", containerProps?.className)}
       {...containerProps}
     >
-      <Label htmlFor={props.id || field.name} {...labelProps}>
+      <Label
+        className={cn(
+          "data-[error=true]:text-destructive",
+          labelProps?.className
+        )}
+        htmlFor={props.id || field.name}
+        data-error={field.state.meta.errors.length > 0}
+        {...labelProps}
+      >
         {label}
       </Label>
 
       <Input
+        className={cn(
+          "dark:data-[error=true]:bg-destructive/10 data-[error=true]:bg-destructive/10 dark:data-[error=true]:hover:bg-destructive/20 data-[error=true]:hover:bg-destructive/20",
+          props.className
+        )}
+        data-error={field.state.meta.errors.length > 0}
         id={props.id || field.name}
         onChange={handleInputChange}
         value={displayValue}
         type="tel"
         {...props}
       />
+
+      <Text size="sm" variant="destructive" asChild>
+        <em role="alert">{field.state.meta.errors.join(", ")}</em>
+      </Text>
     </div>
   );
 }

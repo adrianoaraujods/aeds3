@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { toast } from "sonner";
+import { email } from "zod";
 
 import { useAppForm } from "@/hooks/use-app-form";
 import { useData } from "@/hooks/use-data";
@@ -153,6 +154,7 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
                 ? "Adicionar Cliente"
                 : `Editar ${initialValues.name}`}
             </DialogTitle>
+
             <DialogDescription>
               Preencha os campos abaixo com os dados do cliente
             </DialogDescription>
@@ -161,29 +163,62 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
           <div className="grid gap-4">
             <form.AppField
               name="name"
-              children={(field) => <field.TextField label="Nome" />}
+              validators={{
+                onSubmit: ({ value }) => {
+                  if (value.length < 1) {
+                    return "Campo obrigatório";
+                  }
+                },
+              }}
+              children={(field) => <field.TextField label="Nome" required />}
             />
 
             <form.AppField
               name="socialName"
-              children={(field) => <field.TextField label="Razão Social" />}
+              validators={{
+                onSubmit: ({ value }) => {
+                  if (value.length < 1) {
+                    return "Campo obrigatório";
+                  }
+                },
+              }}
+              children={(field) => (
+                <field.TextField label="Razão Social" required />
+              )}
             />
 
             <div className="grid gap-4 sm:grid-cols-2">
               <form.AppField
                 name="document"
+                validators={{
+                  onSubmit: ({ value }) => {
+                    if (value.length < 9) {
+                      return "CPF inválido";
+                    } else if (value.length > 11 && value.length < 14) {
+                      return "CPNJ inválido";
+                    }
+                  },
+                }}
                 children={(field) => (
                   <field.DocumentNumberField
                     label="CPNJ / CPF"
                     placeholder="00.000.000/0000-00"
+                    required
                   />
                 )}
               />
 
               <form.AppField
                 name="registration"
+                validators={{
+                  onSubmit: ({ value }) => {
+                    if (value.length < 9 || value.length > 13) {
+                      return "Instrição estadual inválida";
+                    }
+                  },
+                }}
                 children={(field) => (
-                  <field.TextField label="Inscrição Estadual" />
+                  <field.TextField label="Inscrição Estadual" required />
                 )}
               />
             </div>
@@ -191,21 +226,39 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
             <div className="grid gap-4 sm:grid-cols-2">
               <form.AppField
                 name="email"
+                validators={{
+                  onSubmit: ({ value }) => {
+                    const parser = email().safeParse(value);
+
+                    if (!parser.success) {
+                      return "Email inválido";
+                    }
+                  },
+                }}
                 children={(field) => (
                   <field.TextField
                     label="E-mail"
                     type="email"
                     placeholder="contato@empresa.com"
+                    required
                   />
                 )}
               />
 
               <form.AppField
                 name="cellphone"
+                validators={{
+                  onSubmit: ({ value }) => {
+                    if (value.length < 8) {
+                      return "Telefon inválido";
+                    }
+                  },
+                }}
                 children={(field) => (
                   <field.PhoneField
                     label="Telefone"
                     placeholder="(31) 3000-0000"
+                    required
                   />
                 )}
               />
@@ -214,13 +267,21 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
             <div className="grid gap-4 sm:grid-cols-2">
               <form.AppField
                 name="payment"
+                validators={{
+                  onSubmit: ({ value }) => {
+                    if (value < 0 || value > 255) {
+                      return "Condição de pagamento inválida";
+                    }
+                  },
+                }}
                 children={(field) => (
                   <field.TextField
                     label="Condições de Pagamento"
                     placeholder="30"
                     type="number"
                     min={0}
-                    max={120}
+                    max={255}
+                    required
                   />
                 )}
               />
@@ -248,32 +309,86 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
               <div className="grid grid-cols-3 gap-2">
                 <form.AppField
                   name="country"
-                  children={(field) => <field.TextField label="País" />}
+                  validators={{
+                    onSubmit: ({ value }) => {
+                      if (value.length < 1) {
+                        return "Campo obrigatório";
+                      }
+                    },
+                  }}
+                  children={(field) => (
+                    <field.TextField label="País" required />
+                  )}
                 />
 
                 <form.AppField
                   name="state"
-                  children={(field) => <field.TextField label="Estado" />}
+                  validators={{
+                    onSubmit: ({ value }) => {
+                      if (value.length < 1) {
+                        return "Campo obrigatório";
+                      }
+                    },
+                  }}
+                  children={(field) => (
+                    <field.TextField label="Estado" required />
+                  )}
                 />
 
                 <form.AppField
                   name="city"
-                  children={(field) => <field.TextField label="Cidade" />}
+                  validators={{
+                    onSubmit: ({ value }) => {
+                      if (value.length < 1) {
+                        return "Campo obrigatório";
+                      }
+                    },
+                  }}
+                  children={(field) => (
+                    <field.TextField label="Cidade" required />
+                  )}
                 />
 
                 <form.AppField
                   name="street"
-                  children={(field) => <field.TextField label="Logradouro" />}
+                  validators={{
+                    onSubmit: ({ value }) => {
+                      if (value.length < 1) {
+                        return "Campo obrigatório";
+                      }
+                    },
+                  }}
+                  children={(field) => (
+                    <field.TextField label="Logradouro" required />
+                  )}
                 />
 
                 <form.AppField
                   name="district"
-                  children={(field) => <field.TextField label="Bairro" />}
+                  validators={{
+                    onSubmit: ({ value }) => {
+                      if (value.length < 1) {
+                        return "Campo obrigatório";
+                      }
+                    },
+                  }}
+                  children={(field) => (
+                    <field.TextField label="Bairro" required />
+                  )}
                 />
 
                 <form.AppField
                   name="number"
-                  children={(field) => <field.TextField label="Número" />}
+                  validators={{
+                    onSubmit: ({ value }) => {
+                      if (value.length < 1) {
+                        return "Campo obrigatório";
+                      }
+                    },
+                  }}
+                  children={(field) => (
+                    <field.TextField label="Número" required />
+                  )}
                 />
               </div>
             </div>

@@ -15,7 +15,7 @@ const textVariants = cva("", {
       italic: "font-extralight italic",
       bold: "font-bold",
       muted: "text-muted-foreground",
-      destructive: "text-destructive-foreground",
+      destructive: "text-destructive",
     },
     size: {
       xs: "text-xs",
