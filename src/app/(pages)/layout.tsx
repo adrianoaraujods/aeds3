@@ -1,5 +1,7 @@
 import * as React from "react";
 
+import { Toaster } from "sonner";
+
 import { loadData } from "@/actions/data";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { DataProvider } from "@/components/layout/data-provider";
@@ -19,6 +21,8 @@ export default async function PagesLayout({
           <main>{children}</main>
         </SidebarInset>
       </SidebarProvider>
+
+      <Toaster position="top-center" richColors />
     </DataProvider>
   );
 }

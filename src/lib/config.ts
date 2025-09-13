@@ -8,21 +8,50 @@ import {
 
 import type { LucideIcon } from "lucide-react";
 
-export type Theme = (typeof THEMES)[number];
-export const THEMES = ["light", "dark", "system"] as const;
+type Theme = (typeof THEMES)[number];
+const THEMES = ["light", "dark", "system"] as const;
 
-export type NavigationLink = {
+type NavigationLink = {
   title: string;
   url: string;
   icon: LucideIcon;
 };
 
-export type Navigation = {
+type Navigation = {
   title: string;
   items: NavigationLink[];
 }[];
 
-export const NAVIGATION: Navigation = [
+type SuccessCode = 200 | 201 | 204 | 209;
+type ErrorCode = 400 | 404 | 409 | 500 | 509;
+type ResponseCode = SuccessCode | ErrorCode;
+
+type Response<TData> = {
+  ok: boolean;
+  status?: ResponseCode;
+  data?: TData;
+  message?: string;
+};
+
+interface SuccessResponse<TData> extends Response<TData> {
+  ok: true;
+  status?: SuccessCode;
+  data: TData;
+  message?: string;
+}
+
+interface ErrorResponse<TData> extends Response<TData> {
+  ok: false;
+  status: ErrorCode;
+  data?: TData;
+  message?: string;
+}
+
+type ActionResponse<TData = void> =
+  | SuccessResponse<TData>
+  | ErrorResponse<TData>;
+
+const NAVIGATION: Navigation = [
   {
     title: "Páginas",
     items: [
@@ -34,3 +63,12 @@ export const NAVIGATION: Navigation = [
     ],
   },
 ];
+
+export {
+  NAVIGATION,
+  THEMES,
+  type ActionResponse,
+  type Navigation,
+  type NavigationLink,
+  type Theme,
+};

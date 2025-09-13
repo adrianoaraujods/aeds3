@@ -16,13 +16,24 @@ export const CURRENCIES = ["BRL", "USD"] as const;
 
 export type Client = z.infer<typeof clientSchema>;
 export const clientSchema = z.object({
-  document: z.string().max(14), // primary key (CNPJ | CPF)
-  registration: z.string(), // Inscrição Estatual
+  document: z
+    .string()
+    .min(11)
+    .max(14)
+    .regex(/[^0-9]/g), // primary key (CNPJ | CPF)
+  registration: z
+    .string()
+    .min(9)
+    .max(13)
+    .regex(/[^0-9]/g), // Inscrição Estatual
   socialName: z.string(), // Razão Social
   name: z.string(),
-  email: z.string(),
-  cellphone: z.string(),
-  payment: z.number(),
+  email: z.email(),
+  cellphone: z
+    .string()
+    .min(10)
+    .regex(/[^0-9]/g),
+  payment: z.number().min(0).max(255),
   currency: z.enum([...CURRENCIES]),
   // address
   street: z.string(),
@@ -36,8 +47,7 @@ export const clientSchema = z.object({
 
 export type Drawing = z.infer<typeof drawingSchema>;
 export const drawingSchema = z.object({
-  id: z.string(), // primary key
-  code: z.string(),
+  number: z.string(), // primary key
   url: z.string(),
 });
 

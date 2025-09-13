@@ -4,8 +4,6 @@ import { ThemeProvider } from "next-themes";
 
 import "@/styles/globals.css";
 
-import { Toaster } from "sonner";
-
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -33,8 +31,6 @@ export default function RootLayout({
           enableSystem
         >
           {children}
-
-          <Toaster position="top-center" />
         </ThemeProvider>
       </body>
     </html>

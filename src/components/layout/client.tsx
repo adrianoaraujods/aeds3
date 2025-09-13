@@ -47,41 +47,94 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
     defaultValues: initialValues,
     onSubmit: async ({ value }) => {
       if (type === "create") {
-        const newClient = await createClient(value);
-
-        if (newClient) {
-          setData((prev) => ({
-            ...prev,
-            clients: [...prev.clients, newClient],
-          }));
-
-          setIsOpen(false);
-        } else {
-          toast.error("Não possível criar o cliente", { richColors: true });
-        }
+        handleCreate(value);
       } else {
-        const updatedClient = await updateClient(initialValues.document, value);
-
-        if (updatedClient) {
-          setData((prev) => ({
-            ...prev,
-            clients: [
-              ...prev.clients.filter(
-                (client) => client.document !== initialValues.document
-              ),
-              updatedClient,
-            ],
-          }));
-
-          setIsOpen(false);
-        } else {
-          toast.error("Não possível atualizar os dados do cliente", {
-            richColors: true,
-          });
-        }
+        handleEdit(value);
       }
     },
   });
+
+  async function handleCreate(client: Client) {
+    const res = await createClient(client);
+
+    if (res.ok) {
+      setData((prev) => ({
+        ...prev,
+        clients: [...prev.clients, res.data],
+      }));
+
+      setIsOpen(false);
+      toast.success("Cliente criado com sucesso!");
+
+      return;
+    }
+
+    switch (res.status) {
+      case 400:
+        toast.warning(
+          "Não foi possível salvar o cliente. Confira os dados do cliente."
+        );
+        break;
+      case 404:
+        toast.warning("Esse cliente já existe do cliente.");
+        break;
+      case 500:
+        toast.error(
+          "Erro interno do servidor. Não foi possível salvar o cliente, tente novamente."
+        );
+        break;
+      default:
+        toast.error(
+          "Existem dados corrompidos no Banco de Dados. Não foi possível salvar o cliente."
+        );
+        break;
+    }
+  }
+
+  async function handleEdit(client: Client) {
+    const res = await updateClient(initialValues.document, client);
+
+    if (res.ok) {
+      setData((prev) => {
+        const clients = { ...prev.clients };
+
+        for (let i = 0; i < clients.length; i++) {
+          if (clients[i].document !== initialValues.document) {
+            clients[i] = res.data;
+            break;
+          }
+        }
+
+        return { ...prev, clients };
+      });
+
+      setIsOpen(false);
+      toast.success("Cliente editado com sucesso!");
+
+      return;
+    }
+
+    switch (res.status) {
+      case 400:
+        toast.warning(
+          "Não foi possível salvar o cliente. Confira os dados do cliente."
+        );
+        break;
+      case 404:
+        toast.warning("Esse cliente já existe do cliente.");
+        break;
+      case 500:
+        toast.error(
+          "Erro interno do servidor. Não foi possível salvar o cliente, tente novamente."
+        );
+        break;
+      default:
+        toast.error(
+          "Existem dados corrompidos no Banco de Dados. Não foi possível salvar o cliente."
+        );
+        break;
+    }
+  }
 
   return (
     <Dialog onOpenChange={setIsOpen} open={isOpen}>
