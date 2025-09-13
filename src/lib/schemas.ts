@@ -14,34 +14,31 @@ export const UNITS = ["UN", "PÇ", "PR"] as const;
 export type Currency = (typeof CURRENCIES)[number];
 export const CURRENCIES = ["BRL", "USD"] as const;
 
-export type Address = z.infer<typeof addressSchema>;
-export const addressSchema = z.object({
-  street: z.string(),
-  country: z.string(),
-  city: z.string(),
-  state: z.string(),
-  number: z.string(),
-  district: z.string().optional(),
-  complement: z.string().optional(),
-});
-
 export type Client = z.infer<typeof clientSchema>;
 export const clientSchema = z.object({
-  number: z.string(), // CNPJ | CPF
-  socialName: z.string(),
+  document: z.string().max(14), // primary key (CNPJ | CPF)
+  registration: z.string(), // Inscrição Estatual
+  socialName: z.string(), // Razão Social
   name: z.string(),
   email: z.string(),
   cellphone: z.string(),
   payment: z.number(),
   currency: z.enum([...CURRENCIES]),
-  address: addressSchema,
+  // address
+  street: z.string(),
+  country: z.string(),
+  city: z.string(),
+  state: z.string(),
+  number: z.string(),
+  district: z.string(),
+  complement: z.string(),
 });
 
 export type Drawing = z.infer<typeof drawingSchema>;
 export const drawingSchema = z.object({
   id: z.string(), // primary key
   code: z.string(),
-  url: z.string().optional(),
+  url: z.string(),
 });
 
 export type Product = z.infer<typeof productSchema>;
@@ -83,3 +80,5 @@ export const orderItemSchema = z
     ...order,
     deliver: new Date(deliver),
   }));
+
+export {};
