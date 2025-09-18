@@ -3,46 +3,49 @@ import { z } from "zod";
 
 import type { ActionResponse } from "@/lib/config";
 
-/** Represents a relation in the schema. */
-type Relation<TSchema extends z.ZodObject> = {
-  /** The name of the Schema that is being referenced. */
-  name: string;
-
-  /** The key of property in the current schema.  */
-  key: keyof TSchema;
-};
-
 type Config<TSchema extends z.ZodObject> = {
   name: string;
   schema: TSchema;
   uniques: (keyof Omit<z.infer<TSchema>, "id">)[];
-  // indexes: keyof z.infer<TSchema>[];
-  // relations?: Relation<TSchema>[];
 };
 
+/**
+ * A class for managing data locally in a single binary file.
+ * It uses Zod schemas for data validation and stores records in a custom binary format.
+ *
+ * Each record in the database file is structured as follows:
+ * - 4 bytes: Record ID (UInt32BE)
+ * - 1 byte: Is Valid (UInt8) (1 for valid, 0 for deleted/invalidated)
+ * - 2 bytes: Length of the data payload (UInt16BE)
+ * - N bytes: Serialized data payload
+ * The first 4 bytes of the file are reserved for a serial counter (last used ID).
+ *
+ * @template TSchema The Zod schema for the data records.
+ */
 export class ByteFile<TSchema extends z.ZodObject> {
   private readonly schema;
   private readonly dataFilePath;
-  // private readonly indexFilePath;
-  // private readonly relations;
-  // private readonly indexes;
   private readonly uniques;
 
-  constructor({
-    name,
-    schema,
-    // indexes,
-    uniques,
-    // relations
-  }: Config<TSchema>) {
+  /**
+   * Creates an instance of ByteFile.
+   * @param {object} config The configuration object.
+   * @param {string} config.name The name of the database file (e.g., 'users').
+   * @param {TSchema} config.schema The Zod schema for the data to be stored.
+   * @param {Array<keyof Omit<z.infer<TSchema>, "id">>} config.uniques An array of property keys that must be unique within the data set.
+   */
+  constructor({ name, schema, uniques }: Config<TSchema>) {
     this.schema = schema.omit({ id: true });
     this.uniques = uniques;
-    // this.indexes = indexes;
-    // this.relations = relations || [];
     this.dataFilePath = `./data/${name}.db`;
-    // this.indexFilePath = `./data/${name}.index.db`;
   }
 
+  /**
+   * Inserts a new record into the database file.
+   *
+   * @param {Omit<z.infer<TSchema>, "id">} data The data to insert.
+   * @returns {ActionResponse<z.infer<TSchema> & { id: number }>} A response object indicating success, status code, and the new record with its assigned ID.
+   */
   public insert(
     data: Omit<z.infer<TSchema>, "id">
   ): ActionResponse<z.infer<TSchema> & { id: number }> {
@@ -105,6 +108,14 @@ export class ByteFile<TSchema extends z.ZodObject> {
     return { ok: false, status: 500 };
   }
 
+  /**
+   * Updates an existing record in the database file.
+   * This method marks the old record as invalid and appends the new record.
+   *
+   * @param {number} id The ID of the record to update.
+   * @param {z.infer<TSchema>} patch The new data to apply.
+   * @returns {ActionResponse<z.infer<TSchema> & { id: number }>} A response object indicating success, status code, and the updated record.
+   */
   public update(
     id: number,
     patch: z.infer<TSchema>
@@ -176,6 +187,12 @@ export class ByteFile<TSchema extends z.ZodObject> {
     return { ok: false, status: 500 };
   }
 
+  /**
+   * Deletes a record from the database file by marking it as invalid.
+   *
+   * @param {number} id The ID of the record to delete.
+   * @returns {ActionResponse} A response object indicating success and status code.
+   */
   public delete(id: number): ActionResponse {
     try {
       const buffer = fs.readFileSync(this.dataFilePath);
@@ -220,10 +237,29 @@ export class ByteFile<TSchema extends z.ZodObject> {
     return { ok: false, status: 500 };
   }
 
+  /**
+   * Overloaded method to select records from the database.
+   *
+   * @param {number} id Selects a single record by its ID.
+   * @returns {ActionResponse<z.infer<TSchema> & { id: number }>} A response object containing the found record.
+   */
   public select(id: number): ActionResponse<z.infer<TSchema> & { id: number }>;
+
+  /**
+   * Overloaded method to select records from the database.
+   *
+   * @param {number[]} ids Selects multiple records by their IDs.
+   * @returns {ActionResponse<((z.infer<TSchema> & { id: number }) | null)[]>} A response object containing an array of found records or null for those not found.
+   */
   public select(
     ids: number[]
   ): ActionResponse<((z.infer<TSchema> & { id: number }) | null)[]>;
+
+  /**
+   * Overloaded method to select records from the database.
+   *
+   * @returns {ActionResponse<(z.infer<TSchema> & { id: number })[]>} Selects all valid records.
+   */
   public select(): ActionResponse<(z.infer<TSchema> & { id: number })[]>;
 
   public select(
@@ -356,6 +392,12 @@ export class ByteFile<TSchema extends z.ZodObject> {
     return { ok: false, status: 500 };
   }
 
+  /**
+   * Creates a new database file and initializes the serial counter.
+   *
+   * @param {number} [serial] The starting value for the serial counter. Defaults to 0.
+   * @private
+   */
   private createFile(serial?: number) {
     const buffer = Buffer.alloc(4);
     buffer.writeUInt32BE(serial || 0);
@@ -363,6 +405,12 @@ export class ByteFile<TSchema extends z.ZodObject> {
     fs.writeFileSync(this.dataFilePath, buffer);
   }
 
+  /**
+   * Increments the serial counter and writes the new value back to the file.
+   *
+   * @returns {number} The new serial ID.
+   * @private
+   */
   private serial(): number {
     try {
       const buffer = fs.readFileSync(this.dataFilePath);
@@ -384,7 +432,16 @@ export class ByteFile<TSchema extends z.ZodObject> {
     }
   }
 
-  private create(id: number, data: z.infer<TSchema>) {
+  /**
+   * Creates a data record buffer for writing to the file.
+   * This includes the ID, validity flag, payload length and the serialized data.
+   *
+   * @param {number} id The ID of the record.
+   * @param {z.infer<TSchema>} data The data payload to serialize.
+   * @returns {Buffer} The complete record buffer.
+   * @private
+   */
+  private create(id: number, data: z.infer<TSchema>): Buffer {
     const idBuffer = Buffer.alloc(4);
     idBuffer.writeUInt32BE(id);
 
@@ -399,6 +456,14 @@ export class ByteFile<TSchema extends z.ZodObject> {
     return Buffer.concat([idBuffer, isValidBuffer, lengthBuffer, dataBuffer]);
   }
 
+  /**
+   * Recursively serializes a JavaScript object into a binary Buffer based on its Zod schema.
+   *
+   * @param {z.ZodType} schema The Zod schema for the value to serialize.
+   * @param {any} value The value to serialize.
+   * @returns {Buffer} The serialized Buffer.
+   * @private
+   */
   private serialize(schema: z.ZodType, value: any): Buffer {
     switch (schema.type) {
       case "boolean":
@@ -493,6 +558,15 @@ export class ByteFile<TSchema extends z.ZodObject> {
     }
   }
 
+  /**
+   * Recursively deserializes a binary Buffer into a JavaScript object based on its Zod schema.
+   *
+   * @param {Buffer} buffer The buffer to deserialize from.
+   * @param {number} offset The current offset in the buffer.
+   * @param {z.ZodType} schema The Zod schema to guide deserialization.
+   * @returns {{ offset: number; value: any }} An object containing the deserialized value and the new offset.
+   * @private
+   */
   private deserialize(
     buffer: Buffer,
     offset: number,
