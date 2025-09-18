@@ -40,7 +40,7 @@ function TextField({
     >
       <Label
         className={cn(
-          "data-[error=true]:text-destructive",
+          "data-[error=true]:text-destructive line-clamp-1 text-nowrap text-ellipsis",
           labelProps?.className
         )}
         htmlFor={props.id || field.name}
@@ -98,7 +98,7 @@ function SelectField({
     >
       <Label
         className={cn(
-          "data-[error=true]:text-destructive",
+          "data-[error=true]:text-destructivetext-nowrap line-clamp-1 text-ellipsis",
           labelProps?.className
         )}
         htmlFor={props.id || field.name}
@@ -180,7 +180,7 @@ function DocumentNumberField({
     >
       <Label
         className={cn(
-          "data-[error=true]:text-destructive",
+          "data-[error=true]:text-destructive line-clamp-1 text-nowrap text-ellipsis",
           labelProps?.className
         )}
         htmlFor={props.id || field.name}
@@ -238,7 +238,7 @@ function PhoneField({
     >
       <Label
         className={cn(
-          "data-[error=true]:text-destructive",
+          "data-[error=true]:text-destructivetext-nowrap line-clamp-1 text-ellipsis",
           labelProps?.className
         )}
         htmlFor={props.id || field.name}

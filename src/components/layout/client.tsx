@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { toast } from "sonner";
@@ -9,6 +10,7 @@ import { email } from "zod";
 import { useAppForm } from "@/hooks/use-app-form";
 import { useData } from "@/hooks/use-data";
 import { CURRENCIES } from "@/lib/schemas";
+import { formatCNPJ, formatCPF } from "@/lib/utils";
 import { createClient, deleteClient, updateClient } from "@/actions/client";
 import { SelectOption } from "@/components/layout/form";
 import { DataTable } from "@/components/table/data-table";
@@ -27,15 +29,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -43,7 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { EllipsisIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { EllipsisIcon, EyeIcon, Trash2Icon } from "lucide-react";
 
 import type { Client, Currency } from "@/lib/schemas";
 
@@ -52,15 +45,19 @@ const currencies: { [currency in Currency]: Omit<SelectOption, "value"> } = {
   USD: { title: "Dólar" },
 };
 
-type ClientDialogProps = {
+type ClientFormProps = {
   initialValues: Client;
-  trigger: React.ReactNode;
   type: "create" | "edit";
+  canEdit?: boolean;
+  setCanEdit?: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
-function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
-  const [isOpen, setIsOpen] = React.useState(false);
-
+function ClientForm({
+  initialValues,
+  type,
+  canEdit,
+  setCanEdit,
+}: ClientFormProps) {
   const { setData } = useData();
 
   const form = useAppForm({
@@ -83,8 +80,13 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
         clients: [...prev.clients, res.data],
       }));
 
-      setIsOpen(false);
-      toast.success("Cliente criado com sucesso!");
+      toast.success("Cliente criado com sucesso!", {
+        action: (
+          <Button asChild>
+            <Link href={`/clientes/${res.data.id}`}>Abrir</Link>
+          </Button>
+        ),
+      });
 
       return;
     }
@@ -128,7 +130,10 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
         return { ...prev, clients };
       });
 
-      setIsOpen(false);
+      if (setCanEdit) {
+        setCanEdit(false);
+      }
+
       toast.success("Cliente editado com sucesso!");
 
       return;
@@ -160,43 +165,177 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
   }
 
   return (
-    <Dialog onOpenChange={setIsOpen} open={isOpen}>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-      >
-        {trigger}
-
-        <DialogContent className="sm:max-w-[680px]">
-          <DialogHeader>
-            <DialogTitle>
-              {type === "create"
-                ? "Adicionar Cliente"
-                : `Editar ${initialValues.name}`}
-            </DialogTitle>
-
-            <DialogDescription>
-              Preencha os campos abaixo com os dados do cliente
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-4">
-            <form.AppField
-              name="name"
-              validators={{
-                onSubmit: ({ value }) => {
-                  if (value.length < 1) {
-                    return "Campo obrigatório";
-                  }
-                },
-              }}
-              children={(field) => <field.TextField label="Nome" required />}
+    <form
+      className="grid gap-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+    >
+      <div className="grid gap-x-4 gap-y-1 lg:grid-cols-2 xl:grid-cols-[5fr_3fr_3fr_2fr]">
+        <form.AppField
+          name="name"
+          validators={{
+            onSubmit: ({ value }) => {
+              if (value.length < 1) {
+                return "Campo obrigatório";
+              }
+            },
+          }}
+          children={(field) => (
+            <field.TextField
+              label="Nome"
+              disabled={canEdit === false}
+              required
             />
+          )}
+        />
 
+        <form.AppField
+          name="document"
+          validators={{
+            onSubmit: ({ value }) => {
+              if (value.length < 9) {
+                return "CPF inválido";
+              } else if (value.length > 11 && value.length < 14) {
+                return "CPNJ inválido";
+              }
+            },
+          }}
+          children={(field) => (
+            <field.DocumentNumberField
+              label="CPNJ / CPF"
+              placeholder="00.000.000/0000-00"
+              disabled={canEdit === false}
+              required
+            />
+          )}
+        />
+
+        <form.AppField
+          name="registration"
+          validators={{
+            onSubmit: ({ value }) => {
+              if (value.length < 9 || value.length > 13) {
+                return "Instrição estadual inválida";
+              }
+            },
+          }}
+          children={(field) => (
+            <field.TextField
+              label="Inscrição Estadual"
+              disabled={canEdit === false}
+              required
+            />
+          )}
+        />
+
+        <form.AppField
+          name="payment"
+          validators={{
+            onSubmit: ({ value }) => {
+              if (value < 0 || value > 255) {
+                return "Condição de pagamento inválida";
+              }
+            },
+          }}
+          children={(field) => (
+            <field.TextField
+              label="Condições de Pagamento"
+              placeholder="30"
+              type="number"
+              min={0}
+              max={255}
+              disabled={canEdit === false}
+              required
+            />
+          )}
+        />
+
+        <form.AppField
+          name="socialName"
+          validators={{
+            onSubmit: ({ value }) => {
+              if (value.length < 1) {
+                return "Campo obrigatório";
+              }
+            },
+          }}
+          children={(field) => (
+            <field.TextField
+              label="Razão Social"
+              disabled={canEdit === false}
+              required
+            />
+          )}
+        />
+
+        <form.AppField
+          name="email"
+          validators={{
+            onSubmit: ({ value }) => {
+              const parser = email().safeParse(value);
+
+              if (!parser.success) {
+                return "Email inválido";
+              }
+            },
+          }}
+          children={(field) => (
+            <field.TextField
+              label="E-mail"
+              type="email"
+              placeholder="contato@empresa.com"
+              disabled={canEdit === false}
+              required
+            />
+          )}
+        />
+
+        <form.AppField
+          name="cellphone"
+          validators={{
+            onSubmit: ({ value }) => {
+              if (value.length < 8) {
+                return "Telefone inválido";
+              }
+            },
+          }}
+          children={(field) => (
+            <field.PhoneField
+              label="Telefone"
+              placeholder="(31) 3000-0000"
+              disabled={canEdit === false}
+              required
+            />
+          )}
+        />
+
+        <form.AppField
+          name="currency"
+          children={(field) => (
+            <field.SelectField
+              label="Moeda"
+              defaultValue={CURRENCIES[0]}
+              options={Object.keys(currencies).map((currency) => ({
+                value: currency,
+                title: currencies[currency as Currency].title,
+              }))}
+              triggerProps={{ disabled: canEdit === false }}
+            />
+          )}
+        />
+      </div>
+
+      <div className="grid gap-2">
+        <Heading element="span" className="mb-2 border-b">
+          Endereço
+        </Heading>
+
+        <div className="xl: grid gap-x-4 gap-y-1">
+          <div className="grid gap-x-4 gap-y-1 lg:grid-cols-3">
             <form.AppField
-              name="socialName"
+              name="address.country"
               validators={{
                 onSubmit: ({ value }) => {
                   if (value.length < 1) {
@@ -205,242 +344,141 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
                 },
               }}
               children={(field) => (
-                <field.TextField label="Razão Social" required />
+                <field.TextField
+                  label="País"
+                  disabled={canEdit === false}
+                  required
+                />
               )}
             />
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <form.AppField
-                name="document"
-                validators={{
-                  onSubmit: ({ value }) => {
-                    if (value.length < 9) {
-                      return "CPF inválido";
-                    } else if (value.length > 11 && value.length < 14) {
-                      return "CPNJ inválido";
-                    }
-                  },
-                }}
-                children={(field) => (
-                  <field.DocumentNumberField
-                    label="CPNJ / CPF"
-                    placeholder="00.000.000/0000-00"
-                    required
-                  />
-                )}
-              />
-
-              <form.AppField
-                name="registration"
-                validators={{
-                  onSubmit: ({ value }) => {
-                    if (value.length < 9 || value.length > 13) {
-                      return "Instrição estadual inválida";
-                    }
-                  },
-                }}
-                children={(field) => (
-                  <field.TextField label="Inscrição Estadual" required />
-                )}
-              />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <form.AppField
-                name="email"
-                validators={{
-                  onSubmit: ({ value }) => {
-                    const parser = email().safeParse(value);
-
-                    if (!parser.success) {
-                      return "Email inválido";
-                    }
-                  },
-                }}
-                children={(field) => (
-                  <field.TextField
-                    label="E-mail"
-                    type="email"
-                    placeholder="contato@empresa.com"
-                    required
-                  />
-                )}
-              />
-
-              <form.AppField
-                name="cellphone"
-                validators={{
-                  onSubmit: ({ value }) => {
-                    if (value.length < 8) {
-                      return "Telefon inválido";
-                    }
-                  },
-                }}
-                children={(field) => (
-                  <field.PhoneField
-                    label="Telefone"
-                    placeholder="(31) 3000-0000"
-                    required
-                  />
-                )}
-              />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <form.AppField
-                name="payment"
-                validators={{
-                  onSubmit: ({ value }) => {
-                    if (value < 0 || value > 255) {
-                      return "Condição de pagamento inválida";
-                    }
-                  },
-                }}
-                children={(field) => (
-                  <field.TextField
-                    label="Condições de Pagamento"
-                    placeholder="30"
-                    type="number"
-                    min={0}
-                    max={255}
-                    required
-                  />
-                )}
-              />
-
-              <form.AppField
-                name="currency"
-                children={(field) => (
-                  <field.SelectField
-                    label="Moeda"
-                    defaultValue={CURRENCIES[0]}
-                    options={Object.keys(currencies).map((currency) => ({
-                      value: currency,
-                      title: currencies[currency as Currency].title,
-                    }))}
-                  />
-                )}
-              />
-            </div>
-
-            <div>
-              <Heading element="span" className="mb-2 border-b">
-                Endereço
-              </Heading>
-
-              <div className="grid grid-cols-4 gap-2">
-                <form.AppField
-                  name="address.country"
-                  validators={{
-                    onSubmit: ({ value }) => {
-                      if (value.length < 1) {
-                        return "Campo obrigatório";
-                      }
-                    },
-                  }}
-                  children={(field) => (
-                    <field.TextField label="País" required />
-                  )}
+            <form.AppField
+              name="address.state"
+              validators={{
+                onSubmit: ({ value }) => {
+                  if (value.length < 1) {
+                    return "Campo obrigatório";
+                  }
+                },
+              }}
+              children={(field) => (
+                <field.TextField
+                  label="Estado"
+                  disabled={canEdit === false}
+                  required
                 />
+              )}
+            />
 
-                <form.AppField
-                  name="address.state"
-                  validators={{
-                    onSubmit: ({ value }) => {
-                      if (value.length < 1) {
-                        return "Campo obrigatório";
-                      }
-                    },
-                  }}
-                  children={(field) => (
-                    <field.TextField label="Estado" required />
-                  )}
+            <form.AppField
+              name="address.city"
+              validators={{
+                onSubmit: ({ value }) => {
+                  if (value.length < 1) {
+                    return "Campo obrigatório";
+                  }
+                },
+              }}
+              children={(field) => (
+                <field.TextField
+                  label="Cidade"
+                  disabled={canEdit === false}
+                  required
                 />
-
-                <form.AppField
-                  name="address.city"
-                  validators={{
-                    onSubmit: ({ value }) => {
-                      if (value.length < 1) {
-                        return "Campo obrigatório";
-                      }
-                    },
-                  }}
-                  children={(field) => (
-                    <field.TextField label="Cidade" required />
-                  )}
-                />
-
-                <form.AppField
-                  name="address.street"
-                  validators={{
-                    onSubmit: ({ value }) => {
-                      if (value.length < 1) {
-                        return "Campo obrigatório";
-                      }
-                    },
-                  }}
-                  children={(field) => (
-                    <field.TextField label="Logradouro" required />
-                  )}
-                />
-
-                <form.AppField
-                  name="address.number"
-                  validators={{
-                    onSubmit: ({ value }) => {
-                      if (value.length < 1) {
-                        return "Campo obrigatório";
-                      }
-                    },
-                  }}
-                  children={(field) => (
-                    <field.TextField label="Número" required />
-                  )}
-                />
-
-                <form.AppField
-                  name="address.district"
-                  children={(field) => (
-                    <field.TextField label="Bairro" required />
-                  )}
-                />
-
-                <form.AppField
-                  name="address.complement"
-                  children={(field) => (
-                    <field.TextField label="Complemento" required />
-                  )}
-                />
-              </div>
-            </div>
+              )}
+            />
           </div>
 
-          <DialogFooter>
-            <Button
-              type="submit"
-              onClick={() => {
-                form.handleSubmit();
-              }}
-            >
-              Salvar
-            </Button>
+          <div className="grid gap-x-4 gap-y-1 lg:grid-cols-4">
+            <form.AppField
+              name="address.district"
+              children={(field) => (
+                <field.TextField
+                  label="Bairro"
+                  disabled={canEdit === false}
+                  required
+                />
+              )}
+            />
 
-            <Button
-              onClick={(e) => {
-                e.preventDefault();
-                setIsOpen(false);
-                form.reset();
+            <form.AppField
+              name="address.street"
+              validators={{
+                onSubmit: ({ value }) => {
+                  if (value.length < 1) {
+                    return "Campo obrigatório";
+                  }
+                },
               }}
-              variant="outline"
-              type="reset"
-            >
-              Cancelar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </form>
-    </Dialog>
+              children={(field) => (
+                <field.TextField
+                  label="Logradouro"
+                  disabled={canEdit === false}
+                  required
+                />
+              )}
+            />
+
+            <form.AppField
+              name="address.number"
+              validators={{
+                onSubmit: ({ value }) => {
+                  if (value.length < 1) {
+                    return "Campo obrigatório";
+                  }
+                },
+              }}
+              children={(field) => (
+                <field.TextField
+                  label="Número"
+                  disabled={canEdit === false}
+                  required
+                />
+              )}
+            />
+
+            <form.AppField
+              name="address.complement"
+              children={(field) => (
+                <field.TextField
+                  label="Complemento"
+                  disabled={canEdit === false}
+                  required
+                />
+              )}
+            />
+          </div>
+        </div>
+      </div>
+
+      {(type === "create" || canEdit) && (
+        <footer className="flex flex-row-reverse gap-2">
+          <Button
+            type="submit"
+            onClick={() => {
+              form.handleSubmit();
+            }}
+          >
+            Salvar
+          </Button>
+
+          <Button
+            onClick={(e) => {
+              e.preventDefault();
+              form.reset();
+
+              if (setCanEdit) {
+                setCanEdit(false);
+              }
+            }}
+            variant="outline"
+            type="reset"
+          >
+            Cancelar
+          </Button>
+        </footer>
+      )}
+    </form>
   );
 }
 
@@ -451,8 +489,24 @@ function ClientTable() {
     columns: [
       { accessorKey: "name", header: "Nome" },
       { accessorKey: "socialName", header: "Razão Social" },
-      { accessorKey: "document", header: "CPNJ / CPF" },
-      { accessorKey: "registration", header: "Inscrição Estadual" },
+      {
+        accessorKey: "document",
+        header: "CPNJ / CPF",
+        cell: ({ getValue }) => {
+          const value: string = getValue();
+
+          return (
+            <span className="font-mono">
+              {value.length === 14 ? formatCNPJ(value) : formatCPF(value)}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "registration",
+        header: "Inscrição Estadual",
+        cell: ({ getValue }) => <span className="font-mono">{getValue()}</span>,
+      },
       {
         accessorKey: "payment",
         header: "Condições de Pagamento",
@@ -506,61 +560,53 @@ function ClientTableRowMenu({ client }: { client: Client }) {
   }
 
   return (
-    <ClientDialog
-      initialValues={client}
-      type="edit"
-      trigger={
-        <AlertDialog>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="icon" variant="outline">
-                <EllipsisIcon className="size-5" />
-              </Button>
-            </DropdownMenuTrigger>
+    <AlertDialog>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="icon" variant="outline">
+            <EllipsisIcon className="size-5" />
+          </Button>
+        </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end">
-              <DropdownMenuGroup>
-                <DialogTrigger asChild>
-                  <DropdownMenuItem>
-                    <PencilIcon />
+        <DropdownMenuContent align="end">
+          <DropdownMenuGroup>
+            <DropdownMenuItem asChild>
+              <Link href={`/clientes/${client.id}`}>
+                <EyeIcon />
 
-                    <Text>Editar</Text>
-                  </DropdownMenuItem>
-                </DialogTrigger>
+                <Text>Ver</Text>
+              </Link>
+            </DropdownMenuItem>
 
-                <AlertDialogTrigger asChild>
-                  <DropdownMenuItem variant="destructive">
-                    <Trash2Icon />
+            <AlertDialogTrigger asChild>
+              <DropdownMenuItem variant="destructive">
+                <Trash2Icon />
 
-                    <Text>Deletar</Text>
-                  </DropdownMenuItem>
-                </AlertDialogTrigger>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <Text>Deletar</Text>
+              </DropdownMenuItem>
+            </AlertDialogTrigger>
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Essa ação não pode ser desfeita. Isso irá remover
-                permanentemente esse cliente e todos os seus pedidos e cotações
-                associados.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <Button variant="destructive" asChild>
-                <AlertDialogAction onClick={() => handleDelete()}>
-                  Excluir
-                </AlertDialogAction>
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      }
-    />
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Isso irá excluir permanentemente esse cliente.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <Button variant="destructive" asChild>
+            <AlertDialogAction onClick={() => handleDelete()}>
+              Excluir
+            </AlertDialogAction>
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
-export { ClientDialog, ClientTable };
+export { ClientForm, ClientTable };

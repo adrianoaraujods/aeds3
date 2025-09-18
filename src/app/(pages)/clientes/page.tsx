@@ -1,33 +1,13 @@
 import * as React from "react";
+import Link from "next/link";
 
-import { ClientDialog, ClientTable } from "@/components/layout/client";
+import { ClientTable } from "@/components/layout/client";
 import { Section } from "@/components/layout/section";
 import { Heading } from "@/components/typography/heading";
 import { Text } from "@/components/typography/text";
 import { Button } from "@/components/ui/button";
-import { DialogTrigger } from "@/components/ui/dialog";
 
 import { PlusCircleIcon } from "lucide-react";
-
-import type { Client } from "@/lib/schemas";
-
-const defaultClient: Client = {
-  document: "",
-  socialName: "",
-  registration: "",
-  name: "",
-  email: "",
-  cellphone: "",
-  payment: 30,
-  currency: "BRL",
-  street: "",
-  country: "",
-  city: "",
-  state: "",
-  number: "",
-  district: "",
-  complement: "",
-};
 
 export default function ClientsPage() {
   return (
@@ -37,19 +17,13 @@ export default function ClientsPage() {
           Clientes
         </Heading>
 
-        <ClientDialog
-          initialValues={defaultClient}
-          type="create"
-          trigger={
-            <DialogTrigger asChild>
-              <Button variant="outline">
-                <PlusCircleIcon />
+        <Button variant="outline" asChild>
+          <Link href="/clientes/novo">
+            <PlusCircleIcon />
 
-                <Text>Adicionar</Text>
-              </Button>
-            </DialogTrigger>
-          }
-        />
+            <Text>Adicionar</Text>
+          </Link>
+        </Button>
       </header>
 
       <div>
