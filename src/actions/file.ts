@@ -15,7 +15,7 @@ type Relation<TSchema extends z.ZodObject> = {
 type Config<TSchema extends z.ZodObject> = {
   name: string;
   schema: TSchema;
-  // uniques: keyof z.infer<TSchema>[];
+  uniques: (keyof Omit<z.infer<TSchema>, "id">)[];
   // indexes: keyof z.infer<TSchema>[];
   // relations?: Relation<TSchema>[];
 };
@@ -26,17 +26,17 @@ export class ByteFile<TSchema extends z.ZodObject> {
   // private readonly indexFilePath;
   // private readonly relations;
   // private readonly indexes;
-  // private readonly uniques;
+  private readonly uniques;
 
   constructor({
     name,
     schema,
     // indexes,
-    // uniques,
+    uniques,
     // relations
   }: Config<TSchema>) {
     this.schema = schema.omit({ id: true });
-    // this.uniques = uniques;
+    this.uniques = uniques;
     // this.indexes = indexes;
     // this.relations = relations || [];
     this.dataFilePath = `./data/${name}.db`;
@@ -45,11 +45,50 @@ export class ByteFile<TSchema extends z.ZodObject> {
 
   public insert(
     data: Omit<z.infer<TSchema>, "id">
-  ): ActionResponse<z.infer<TSchema>> {
+  ): ActionResponse<z.infer<TSchema> & { id: number }> {
     const parser = this.schema.safeParse(data);
     if (!parser.success) return { ok: false, status: 400 };
 
     const parsedData = parser.data as z.infer<TSchema>;
+
+    try {
+      const buffer = fs.readFileSync(this.dataFilePath);
+      let offset = 4; // skip serial bytes
+
+      while (offset < buffer.length) {
+        offset += 4; // skip current id
+
+        const isValid = buffer.readUIntBE(offset, 1) === 1;
+        offset += 1;
+
+        const length = buffer.readUInt16BE(offset);
+        offset += 2;
+
+        if (isValid) {
+          const { value } = this.deserialize(buffer, offset, this.schema);
+
+          const parser = this.schema.safeParse(value);
+
+          if (!parser.success) {
+            return { ok: false, status: 509 };
+          }
+
+          const parsedData = parser.data as z.infer<TSchema> & { id: number };
+
+          for (const key of this.uniques) {
+            if (parsedData[key] === data[key]) {
+              return { ok: false, status: 409 };
+            }
+          }
+        }
+
+        offset += length;
+      }
+    } catch (error: any) {
+      if (error.code !== "ENOENT") {
+        return { ok: false, status: 500 };
+      }
+    }
 
     try {
       const id = this.serial();
@@ -73,7 +112,9 @@ export class ByteFile<TSchema extends z.ZodObject> {
     const parser = this.schema.safeParse(patch);
     if (!parser.success) return { ok: false, status: 400 };
 
-    const parsedData = parser.data as z.infer<TSchema>;
+    const patchData = parser.data as z.infer<TSchema>;
+
+    let isValidByteOffset: number | null = null;
 
     try {
       const buffer = fs.readFileSync(this.dataFilePath);
@@ -89,23 +130,40 @@ export class ByteFile<TSchema extends z.ZodObject> {
         const length = buffer.readUInt16BE(offset);
         offset += 2;
 
-        if (isValid && currentId === id) {
-          // invalidate the old data
-          buffer.writeUIntBE(0, offset - 3, 1);
+        if (isValid) {
+          const { value } = this.deserialize(buffer, offset, this.schema);
+          const parser = this.schema.safeParse(value);
 
-          const dataBuffer = this.create(id, parsedData);
+          const parsedData = parser.data as z.infer<TSchema>;
 
-          const newBuffer = Buffer.concat([buffer, dataBuffer]);
-
-          fs.writeFileSync(this.dataFilePath, newBuffer);
-
-          return { ok: true, status: 200, data: { ...parsedData, id } };
+          if (!isValidByteOffset && currentId === id) {
+            isValidByteOffset = offset - 3;
+          } else if (parser.success) {
+            for (const key of this.uniques) {
+              if (parsedData[key] === patch[key]) {
+                return { ok: false, status: 409 };
+              }
+            }
+          } else {
+            return { ok: false, status: 509 };
+          }
         }
 
         offset += length;
       }
 
-      return { ok: false, status: 404 };
+      if (!isValidByteOffset) {
+        return { ok: false, status: 404 };
+      }
+
+      // invalidate the old data
+      buffer.writeUIntBE(0, isValidByteOffset, 1);
+
+      const dataBuffer = this.create(id, patchData);
+      const newBuffer = Buffer.concat([buffer, dataBuffer]);
+      fs.writeFileSync(this.dataFilePath, newBuffer);
+
+      return { ok: true, status: 200, data: { ...patchData, id } };
     } catch (error: any) {
       if (error.code === "ENOENT") {
         this.createFile(0);

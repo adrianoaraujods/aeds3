@@ -95,17 +95,17 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
           "Não foi possível salvar o cliente. Confira os dados do cliente."
         );
         break;
-      case 404:
+      case 409:
         toast.warning("Esse cliente já existe do cliente.");
         break;
-      case 500:
+      case 509:
         toast.error(
-          "Erro interno do servidor. Não foi possível salvar o cliente, tente novamente."
+          "Existem dados corrompidos no Banco de Dados. Não foi possível salvar o cliente."
         );
         break;
       default:
         toast.error(
-          "Existem dados corrompidos no Banco de Dados. Não foi possível salvar o cliente."
+          "Erro interno do servidor. Não foi possível salvar o cliente, tente novamente."
         );
         break;
     }
@@ -141,16 +141,19 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
         );
         break;
       case 404:
-        toast.warning("Esse cliente já existe do cliente.");
+        toast.warning("Esse cliente não foi encontrado.");
         break;
-      case 500:
+      case 409:
+        toast.warning("Já existe algum cliente com esses dados.");
+        break;
+      case 509:
         toast.error(
-          "Erro interno do servidor. Não foi possível salvar o cliente, tente novamente."
+          "Existem dados corrompidos no Banco de Dados. Não foi possível salvar o cliente."
         );
         break;
       default:
         toast.error(
-          "Existem dados corrompidos no Banco de Dados. Não foi possível salvar o cliente."
+          "Erro interno do servidor. Não foi possível salvar o cliente, tente novamente."
         );
         break;
     }

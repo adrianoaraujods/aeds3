@@ -9,6 +9,7 @@ import type { Client } from "@/lib/schemas";
 const file = new ByteFile({
   name: "clients",
   schema: clientSchema,
+  uniques: ["document", "socialName", "socialName"],
 });
 
 export async function createClient(
