@@ -1,4 +1,4 @@
-import z from "zod";
+import z, { int32 } from "zod";
 
 import { formatNumber } from "./utils";
 
@@ -16,9 +16,21 @@ export const UNITS = ["UN", "PÇ", "PR"] as const;
 export type Currency = (typeof CURRENCIES)[number];
 export const CURRENCIES = ["BRL", "USD"] as const;
 
+export const addressSchema = z.object({
+  street: z.string(),
+  country: z.string(),
+  city: z.string(),
+  state: z.string(),
+  number: z.string(),
+  district: z.string().optional(),
+  complement: z.string().optional(),
+});
+export type Address = z.infer<typeof addressSchema>;
+
 export type Client = z.infer<typeof clientSchema>;
 export const clientSchema = z.object({
-  document: z // primary key (CNPJ | CPF)
+  id: int32().positive(), // primary key
+  document: z // CNPJ | CPF
     .string()
     .min(11)
     .max(14)
@@ -37,60 +49,47 @@ export const clientSchema = z.object({
     .transform((string) => formatNumber(string)),
   payment: z.number().min(0).max(255),
   currency: z.enum([...CURRENCIES]),
-  // address
-  street: z.string(),
-  country: z.string(),
-  city: z.string(),
-  state: z.string(),
-  number: z.string(),
-  district: z.string(),
-  complement: z.string(),
+  address: addressSchema,
 });
 
 export type Drawing = z.infer<typeof drawingSchema>;
 export const drawingSchema = z.object({
-  number: z.string(), // primary key
+  id: int32().positive(), // primary key
+  number: z.string(),
   url: z.string(),
 });
 
 export type Product = z.infer<typeof productSchema>;
 export const productSchema = z.object({
-  id: z.string(), // primary key
+  id: int32().positive(), // primary key
   code: z.string(),
   description: z.string(),
   unit: z.enum([...UNITS]),
-  drawings: z.array(z.string()), // foreign key from Drawing
+
+  drawings: z.array(z.int32().positive()), // foreign key from Drawing
 });
 
 export type Order = z.infer<typeof orderSchema>;
-export const orderSchema = z
-  .object({
-    client: z.string(), // foreign key from Client
-    number: z.string(), // primary key
-    date: z.number(), // transform to Date from epoch milliseconds
-    total: z.number(), // sum of all items price times the amount
-    state: z.enum([...STATES]),
-    items: z.array(z.string()), // OrderItem primary key
-  })
-  .transform(({ date, ...order }) => ({
-    ...order,
-    date: new Date(date),
-  }));
+export const orderSchema = z.object({
+  id: int32().positive(), // primary key
+  number: z.string(),
+  date: z.date(),
+  total: z.number(), // sum of all items price times the amount
+  state: z.enum([...STATES]),
+
+  clientId: z.int32().positive(), // foreign key from Client
+});
 
 export type OrderItem = z.infer<typeof orderItemSchema>;
-export const orderItemSchema = z
-  .object({
-    order: z.string(), // foreign key from Order
-    item: z.string(), // primary key
-    deliver: z.number(), // transform to Date from epoch milliseconds
-    product: z.string(), // foreign key from Product
-    client: z.string(), // foreign key from Client
-    price: z.number(),
-    amount: z.number(),
-  })
-  .transform(({ deliver, ...order }) => ({
-    ...order,
-    deliver: new Date(deliver),
-  }));
+export const orderItemSchema = z.object({
+  id: int32().positive(), // primary key
+  item: z.string(),
+  deliver: z.date(),
+  price: z.number(),
+  amount: z.number(),
+
+  productId: z.int32().positive(), // foreign key from Product
+  orderId: z.int32().positive(), // foreign key from Order
+});
 
 export {};

@@ -1,63 +1,42 @@
 "use server";
 
 import { clientSchema } from "@/lib/schemas";
-import { ByteFile } from "@/actions/files";
+import { ByteFile } from "@/actions/file";
 
 import type { ActionResponse } from "@/lib/config";
 import type { Client } from "@/lib/schemas";
 
 const file = new ByteFile({
-  filePath: "./data/client.db",
-  primaryKey: "document",
+  name: "clients",
   schema: clientSchema,
-  sizes: {
-    cellphone: 4,
-    city: 4,
-    country: 4,
-    currency: 3,
-    document: 14,
-    email: 4,
-    name: 4,
-    number: 4,
-    payment: 4,
-    registration: 4,
-    socialName: 4,
-    state: 4,
-    street: 4,
-    complement: 4,
-    district: 4,
-  },
 });
 
-async function createClient(data: Client): Promise<ActionResponse<Client>> {
-  return file.append(data);
-}
-
-async function readClient(
-  document: Client["document"]
+export async function createClient(
+  data: Omit<Client, "id">
 ): Promise<ActionResponse<Client>> {
-  return file.get(document);
+  return file.insert(data);
 }
 
-async function getAllClients(): Promise<ActionResponse<Client[]>> {
-  return file.getAll();
+export async function getClient(id: number): Promise<ActionResponse<Client>> {
+  return file.select(id);
 }
 
-async function updateClient(
-  document: Client["document"],
-  patch: Client
+export async function getClients(
+  ids: number[]
+): Promise<ActionResponse<(Client | null)[]>> {
+  return file.select(ids);
+}
+
+export async function getAllClients(): Promise<ActionResponse<Client[]>> {
+  return file.select();
+}
+
+export async function updateClient(
+  data: Client
 ): Promise<ActionResponse<Client>> {
-  // TODO: if the primary key changes, then update other files
-
-  return file.update(document, patch);
+  return file.update(data.id, data);
 }
 
-async function deleteClient(
-  document: Client["document"]
-): Promise<ActionResponse> {
-  // TODO: only delete if there is no association with this client
-
-  return file.delete(document);
+export async function deleteClient(id: number): Promise<ActionResponse> {
+  return file.delete(id);
 }
-
-export { getAllClients, createClient, readClient, updateClient, deleteClient };

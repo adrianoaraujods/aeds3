@@ -13,27 +13,7 @@ import { createClient, deleteClient, updateClient } from "@/actions/client";
 import { SelectOption } from "@/components/layout/form";
 import { DataTable } from "@/components/table/data-table";
 import { Heading } from "@/components/typography/heading";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-
-import {
-  CircleEllipsisIcon,
-  EllipsisIcon,
-  PencilIcon,
-  Trash2Icon,
-} from "lucide-react";
-
-import type { Client, Currency } from "@/lib/schemas";
-
-import { Text } from "../typography/text";
+import { Text } from "@/components/typography/text";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,14 +24,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "../ui/alert-dialog";
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu";
+
+import { EllipsisIcon, PencilIcon, Trash2Icon } from "lucide-react";
+
+import type { Client, Currency } from "@/lib/schemas";
 
 const currencies: { [currency in Currency]: Omit<SelectOption, "value"> } = {
   BRL: { title: "Real" },
@@ -80,7 +74,7 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
     },
   });
 
-  async function handleCreate(client: Client) {
+  async function handleCreate(client: Omit<Client, "id">) {
     const res = await createClient(client);
 
     if (res.ok) {
@@ -118,14 +112,14 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
   }
 
   async function handleEdit(client: Client) {
-    const res = await updateClient(initialValues.document, client);
+    const res = await updateClient(client);
 
     if (res.ok) {
       setData((prev) => {
-        const clients = { ...prev.clients };
+        const clients = [...prev.clients];
 
         for (let i = 0; i < clients.length; i++) {
-          if (clients[i].document !== initialValues.document) {
+          if (clients[i].id === initialValues.id) {
             clients[i] = res.data;
             break;
           }
@@ -172,7 +166,7 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
       >
         {trigger}
 
-        <DialogContent className="sm:max-w-[480px]">
+        <DialogContent className="sm:max-w-[680px]">
           <DialogHeader>
             <DialogTitle>
               {type === "create"
@@ -331,9 +325,9 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
                 Endereço
               </Heading>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 <form.AppField
-                  name="country"
+                  name="address.country"
                   validators={{
                     onSubmit: ({ value }) => {
                       if (value.length < 1) {
@@ -347,7 +341,7 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
                 />
 
                 <form.AppField
-                  name="state"
+                  name="address.state"
                   validators={{
                     onSubmit: ({ value }) => {
                       if (value.length < 1) {
@@ -361,7 +355,7 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
                 />
 
                 <form.AppField
-                  name="city"
+                  name="address.city"
                   validators={{
                     onSubmit: ({ value }) => {
                       if (value.length < 1) {
@@ -375,7 +369,7 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
                 />
 
                 <form.AppField
-                  name="street"
+                  name="address.street"
                   validators={{
                     onSubmit: ({ value }) => {
                       if (value.length < 1) {
@@ -389,21 +383,7 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
                 />
 
                 <form.AppField
-                  name="district"
-                  validators={{
-                    onSubmit: ({ value }) => {
-                      if (value.length < 1) {
-                        return "Campo obrigatório";
-                      }
-                    },
-                  }}
-                  children={(field) => (
-                    <field.TextField label="Bairro" required />
-                  )}
-                />
-
-                <form.AppField
-                  name="number"
+                  name="address.number"
                   validators={{
                     onSubmit: ({ value }) => {
                       if (value.length < 1) {
@@ -413,6 +393,20 @@ function ClientDialog({ initialValues, type, trigger }: ClientDialogProps) {
                   }}
                   children={(field) => (
                     <field.TextField label="Número" required />
+                  )}
+                />
+
+                <form.AppField
+                  name="address.district"
+                  children={(field) => (
+                    <field.TextField label="Bairro" required />
+                  )}
+                />
+
+                <form.AppField
+                  name="address.complement"
+                  children={(field) => (
+                    <field.TextField label="Complemento" required />
                   )}
                 />
               </div>
@@ -478,14 +472,12 @@ function ClientTableRowMenu({ client }: { client: Client }) {
   const { setData } = useData();
 
   async function handleDelete() {
-    const res = await deleteClient(client.document);
+    const res = await deleteClient(client.id);
 
     if (res.ok) {
       setData((prev) => ({
         ...prev,
-        clients: prev.clients.filter(
-          ({ document }) => document !== client.document
-        ),
+        clients: prev.clients.filter(({ id }) => id !== client.id),
       }));
 
       toast.success("Cliente deletado com sucesso!");

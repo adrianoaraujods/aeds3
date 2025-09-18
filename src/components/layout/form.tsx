@@ -31,7 +31,7 @@ function TextField({
   label,
   ...props
 }: TextFieldProps) {
-  const field = useFieldContext<string | number>();
+  const field = useFieldContext<string | number | undefined>();
 
   return (
     <div
@@ -57,12 +57,8 @@ function TextField({
         )}
         data-error={field.state.meta.errors.length > 0}
         id={props.id || field.name}
-        value={field.state.value}
-        onChange={(e) =>
-          field.handleChange(
-            props.type === "number" ? Number(e.target.value) : e.target.value
-          )
-        }
+        value={field.state.value || ""}
+        onChange={(e) => field.handleChange(e.target.value)}
         {...props}
       />
 
