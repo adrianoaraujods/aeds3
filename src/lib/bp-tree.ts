@@ -115,6 +115,29 @@ export class BpTree<TSchema extends z.ZodType, TKey extends z.infer<TSchema>> {
       // Set the values to propagate to the parent.
       propagatedKey = medianKey;
       propagatedChildOffset = newRightNodeOffset;
+
+      // Update predecessor leaf's nextLeafOffset
+      if (pathStack.length > 0) {
+        const { parentOffset, childPointerIndex } =
+          pathStack[pathStack.length - 1]; // Current parent
+
+        // If the current node is not the leftmost child of its parent, a predecessor leaf exists.
+        if (childPointerIndex > 0) {
+          const parentNode = this.readNode(parentOffset);
+
+          // Find the rightmost leaf in the subtree rooted by the immediate left sibling.
+          const leftSiblingRootOffset =
+            parentNode.pointers[childPointerIndex - 1];
+          const predecessorLeafOffset = this.findRightmostLeafOffset(
+            leftSiblingRootOffset
+          );
+
+          // Read the predecessor leaf (W), update its pointer to the new left split node (X'), and overwrite it.
+          const predecessorLeaf = this.readNode(predecessorLeafOffset);
+          predecessorLeaf.nextLeafOffset = currentNodeOffset;
+          this.overwriteNode(predecessorLeaf, predecessorLeafOffset);
+        }
+      }
     } else {
       // No split, just write the modified node (append new version).
       currentNodeOffset = this.writeNode(currentNode);
@@ -436,6 +459,25 @@ export class BpTree<TSchema extends z.ZodType, TKey extends z.infer<TSchema>> {
     }
 
     return true;
+  }
+
+  /**
+   * Finds the offset of the rightmost leaf node in the subtree rooted at the given offset.
+   * This is used to find the predecessor leaf during a split.
+   * @param offset The starting offset of the internal node.
+   * @returns The offset of the rightmost leaf node.
+   */
+  private findRightmostLeafOffset(offset: number): number {
+    let currentNode = this.readNode(offset);
+    let currentOffset = offset;
+
+    // Keep traversing the last pointer until a leaf is found.
+    while (!currentNode.isLeaf) {
+      currentOffset = currentNode.pointers[currentNode.pointers.length - 1];
+      currentNode = this.readNode(currentOffset);
+    }
+
+    return currentOffset;
   }
 
   /**
