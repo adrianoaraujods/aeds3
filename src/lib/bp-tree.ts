@@ -23,6 +23,7 @@ type Config<TSchema extends z.ZodType> = {
 
 const B_PLUS_TREE_ORDER = 4; // 480;
 const MAX_KEYS = B_PLUS_TREE_ORDER - 1;
+const MIN_KEYS = Math.ceil(B_PLUS_TREE_ORDER / 2) - 1;
 
 export class BpTree<TSchema extends z.ZodType, TKey extends z.infer<TSchema>> {
   private readonly filePath: string;
@@ -43,6 +44,7 @@ export class BpTree<TSchema extends z.ZodType, TKey extends z.infer<TSchema>> {
       isLeaf: z.boolean(),
       keys: keySchema.array(),
       pointers: z.int32().min(0).array(),
+      // Adding a default of 0 protects against reading old file structures
       nextLeafOffset: z.int32().min(0),
     });
 
@@ -69,7 +71,7 @@ export class BpTree<TSchema extends z.ZodType, TKey extends z.infer<TSchema>> {
     // 1. Traverse to the correct leaf node.
     while (!currentNode.isLeaf) {
       // Find the index of the child pointer to follow.
-      const childPointerIndex = this.findInsertIndex(currentNode.keys, key);
+      const childPointerIndex = this.findIndex(currentNode.keys, key);
 
       // Record the current node (the parent) and the index of the pointer used.
       pathStack.push({
@@ -83,7 +85,7 @@ export class BpTree<TSchema extends z.ZodType, TKey extends z.infer<TSchema>> {
     }
 
     // 2. Insert into the Leaf Node.
-    const insertIndex = this.findInsertIndex(currentNode.keys, key);
+    const insertIndex = this.findIndex(currentNode.keys, key);
     currentNode.keys.splice(insertIndex, 0, key);
     currentNode.pointers.splice(insertIndex, 0, recordOffset);
 
@@ -144,10 +146,7 @@ export class BpTree<TSchema extends z.ZodType, TKey extends z.infer<TSchema>> {
       }
 
       // A split was propagated: insert the promoted key and the new child pointer.
-      const newKeyInsertIndex = this.findInsertIndex(
-        parentNode.keys,
-        propagatedKey
-      );
+      const newKeyInsertIndex = this.findIndex(parentNode.keys, propagatedKey);
 
       // Insert the key and the pointer to the new right-hand child node.
       parentNode.keys.splice(newKeyInsertIndex, 0, propagatedKey);
@@ -218,9 +217,9 @@ export class BpTree<TSchema extends z.ZodType, TKey extends z.infer<TSchema>> {
     // 1. Traverse down to the correct leaf node.
     while (!currentNode.isLeaf) {
       // Find the index of the child pointer to follow.
-      // The findInsertIndex logic correctly determines the pointer index P[i] such that
+      // The findIndex logic correctly determines the pointer index P[i] such that
       // all keys in the target child are less than or equal to the search key K.
-      const pointerIndex = this.findInsertIndex(currentNode.keys, key);
+      const pointerIndex = this.findIndex(currentNode.keys, key);
 
       // Move to the child node.
       currentOffset = currentNode.pointers[pointerIndex];
@@ -236,12 +235,357 @@ export class BpTree<TSchema extends z.ZodType, TKey extends z.infer<TSchema>> {
   }
 
   /**
+   * Removes a key and its associated record offset from the B+ Tree.
+   * @param key The key value to remove.
+   * @returns True if removal was successful, false otherwise.
+   */
+  public remove(key: TKey): boolean {
+    const initialRootOffset = this.rootOffset;
+    const pathStack: StackEntry[] = [];
+
+    let currentOffset = initialRootOffset;
+    let currentNode = this.readNode(currentOffset);
+
+    // 1. Traverse to the correct leaf node and build pathStack.
+    while (!currentNode.isLeaf) {
+      const childPointerIndex = this.findIndex(currentNode.keys, key);
+
+      pathStack.push({
+        parentOffset: currentOffset,
+        childPointerIndex: childPointerIndex,
+      });
+
+      currentOffset = currentNode.pointers[childPointerIndex];
+      currentNode = this.readNode(currentOffset);
+    }
+
+    // 2. Locate and delete the key in the leaf node.
+    const keyIndex = currentNode.keys.findIndex((k) => k === key);
+    if (keyIndex === -1) {
+      return false; // Key not found.
+    }
+
+    // 2a. Remove the key and its record pointer.
+    currentNode.keys.splice(keyIndex, 1);
+    currentNode.pointers.splice(keyIndex, 1);
+
+    // If the deleted key was the first key in the leaf, the parent's separator key might need updating.
+    let needsKeyUpdate = keyIndex === 0 && pathStack.length > 0;
+
+    // Flag to indicate if rebalancing (merge/redistribution) needs to propagate upwards.
+    let needsRebalance = currentNode.keys.length < MIN_KEYS;
+
+    // The current node is always rewritten (appended) after modification.
+    let currentNodeOffset = this.writeNode(currentNode);
+
+    // 3. Handle deletion propagation up the tree (bottom-up).
+    while (needsKeyUpdate || needsRebalance) {
+      if (pathStack.length === 0) {
+        // If we reach the root and still need rebalance/update, it means only root shrinkage is possible.
+        break;
+      }
+
+      const { parentOffset, childPointerIndex } = pathStack.pop()!;
+
+      const parentNode = this.readNode(parentOffset);
+
+      // Update the parent's pointer to the new version of the child.
+      parentNode.pointers[childPointerIndex] = currentNodeOffset;
+
+      // 3a. Handle Key Update (if first key in a leaf/child was deleted).
+      if (needsKeyUpdate) {
+        if (childPointerIndex > 0) {
+          // Update the separator key in the parent to the new smallest key in the child.
+          parentNode.keys[childPointerIndex - 1] = currentNode.keys[0];
+        }
+        // We stop key update propagation here.
+        needsKeyUpdate = false;
+      }
+
+      // 3b. Handle Underflow (If child needs rebalancing).
+      if (needsRebalance) {
+        const sibInfo = this.getSiblingInfo(parentNode, childPointerIndex);
+
+        let success = false;
+
+        // Try Redistribution from Left Sibling
+        if (sibInfo.leftSiblingOffset) {
+          const leftSibling = this.readNode(sibInfo.leftSiblingOffset);
+          if (leftSibling.keys.length > MIN_KEYS) {
+            success = this.redistribute(
+              parentNode,
+              leftSibling,
+              currentNode,
+              sibInfo.leftSiblingIndex!,
+              childPointerIndex
+            );
+          }
+        }
+
+        // Try Redistribution from Right Sibling
+        if (!success && sibInfo.rightSiblingOffset) {
+          const rightSibling = this.readNode(sibInfo.rightSiblingOffset);
+          if (rightSibling.keys.length > MIN_KEYS) {
+            success = this.redistribute(
+              parentNode,
+              currentNode,
+              rightSibling,
+              childPointerIndex,
+              sibInfo.rightSiblingIndex!
+            );
+          }
+        }
+
+        if (success) {
+          needsRebalance = false; // Problem solved, stop propagation.
+        } else {
+          // Need to Merge (with left sibling if possible, otherwise right).
+
+          if (sibInfo.leftSiblingOffset) {
+            // Merge current (right) into left sibling
+            const leftSibling = this.readNode(sibInfo.leftSiblingOffset);
+            currentNodeOffset = this.mergeNodes(
+              parentNode,
+              leftSibling,
+              currentNode,
+              sibInfo.leftSiblingIndex!,
+              childPointerIndex
+            );
+          } else if (sibInfo.rightSiblingOffset) {
+            // Merge right sibling into current (left)
+            const rightSibling = this.readNode(sibInfo.rightSiblingOffset);
+            currentNodeOffset = this.mergeNodes(
+              parentNode,
+              currentNode,
+              rightSibling,
+              childPointerIndex,
+              sibInfo.rightSiblingIndex!
+            );
+          }
+
+          // Parent's keys/pointers shrinked inside mergeNodes. Check if parent now underflows.
+          needsRebalance =
+            parentNode.keys.length < MIN_KEYS &&
+            parentOffset !== initialRootOffset;
+        }
+      }
+
+      // Crucial Fix: Rewrite the parent node to disk, as it was modified
+      // (pointer update, key update, redistribution, or merge).
+      const newParentOffset = this.writeNode(parentNode);
+
+      // Continue climbing: the parent node becomes the new 'current' node for the next iteration.
+      currentNodeOffset = newParentOffset;
+
+      // FIX: Read the newly written parent node back from disk. This prevents using a stale in-memory reference.
+      currentNode = this.readNode(currentNodeOffset);
+    }
+
+    // 4. Handle Root Shrinkage
+    // Check if the root was the original root and is now an empty internal node.
+    if (
+      this.rootOffset === initialRootOffset &&
+      !currentNode.isLeaf &&
+      currentNode.keys.length === 0
+    ) {
+      // The old root merged its children and is now empty.
+      const newRootOffset = currentNode.pointers[0];
+      this.updateRootOffset(newRootOffset);
+      return true;
+    }
+
+    // Final Root Offset Update:
+    // If the root was rewritten (not split, not shrunk), update the offset.
+    if (
+      this.rootOffset === initialRootOffset &&
+      currentNodeOffset !== initialRootOffset
+    ) {
+      this.updateRootOffset(currentNodeOffset);
+    }
+
+    return true;
+  }
+
+  /**
+   * Finds the sibling information necessary for redistribution or merging.
+   * @param parentNode The parent node.
+   * @param childPointerIndex The index of the child node in the parent's pointers array.
+   * @returns An object containing left/right sibling offsets/indices.
+   */
+  private getSiblingInfo(
+    parentNode: Node<TKey>,
+    childPointerIndex: number
+  ): {
+    leftSiblingOffset: number | null;
+    rightSiblingOffset: number | null;
+    leftSiblingIndex: number | null;
+    rightSiblingIndex: number | null;
+  } {
+    const leftSiblingIndex =
+      childPointerIndex > 0 ? childPointerIndex - 1 : null;
+    const rightSiblingIndex =
+      childPointerIndex < parentNode.pointers.length - 1
+        ? childPointerIndex + 1
+        : null;
+
+    return {
+      leftSiblingOffset:
+        leftSiblingIndex !== null
+          ? parentNode.pointers[leftSiblingIndex]
+          : null,
+      rightSiblingOffset:
+        rightSiblingIndex !== null
+          ? parentNode.pointers[rightSiblingIndex]
+          : null,
+      leftSiblingIndex,
+      rightSiblingIndex,
+    };
+  }
+
+  /**
+   * Performs redistribution between two siblings and updates the parent.
+   * @param parent The parent node (is modified and rewritten).
+   * @param left The left sibling node (is modified and rewritten).
+   * @param right The right sibling node (is modified and rewritten).
+   * @param leftIndex The pointer index of the left sibling in the parent.
+   * @param rightIndex The pointer index of the right sibling in the parent.
+   * @returns True if redistribution was successful.
+   */
+  private redistribute(
+    parent: Node<TKey>,
+    left: Node<TKey>,
+    right: Node<TKey>,
+    leftIndex: number,
+    rightIndex: number
+  ): boolean {
+    const separatorKeyIndex = leftIndex;
+
+    // Determine if redistribution is possible from left to right or right to left
+    const canRedistributeFromLeft =
+      left.keys.length > MIN_KEYS && leftIndex < rightIndex;
+    const canRedistributeFromRight =
+      right.keys.length > MIN_KEYS && rightIndex > leftIndex;
+
+    if (canRedistributeFromLeft) {
+      if (left.isLeaf) {
+        // Case 1: Leaf Redistribution (Left gives largest key)
+        const keyToMove = left.keys.pop()!;
+        const pointerToMove = left.pointers.pop()!;
+
+        // Insert at the beginning of the right node.
+        right.keys.unshift(keyToMove);
+        right.pointers.unshift(pointerToMove);
+
+        // Update the separator key in the parent (it must point to the new smallest key in the right node).
+        parent.keys[separatorKeyIndex] = right.keys[0];
+      } else {
+        // Case 2: Internal Redistribution (Left gives largest pointer, Parent gives separator, Right receives pointer/key)
+        const keyToMove = left.keys.pop()!; // Key from left
+        const pointerToMove = left.pointers.pop()!; // Pointer from left
+        const separatorKey = parent.keys[separatorKeyIndex]; // Key from parent
+
+        // 1. Move separator key down to the right child.
+        right.keys.unshift(separatorKey);
+        right.pointers.unshift(pointerToMove); // New pointer on the far left of right child
+
+        // 2. Move keyToMove (from left) up to the parent as the new separator.
+        parent.keys[separatorKeyIndex] = keyToMove;
+      }
+    } else if (canRedistributeFromRight) {
+      if (left.isLeaf) {
+        // Case 3: Leaf Redistribution (Right gives smallest key)
+        const keyToMove = right.keys.shift()!;
+        const pointerToMove = right.pointers.shift()!;
+
+        // Append to the left node.
+        left.keys.push(keyToMove);
+        left.pointers.push(pointerToMove);
+
+        // Update the separator key in the parent (it must point to the new smallest key in the right node).
+        parent.keys[separatorKeyIndex] = right.keys[0];
+      } else {
+        // Case 4: Internal Redistribution (Right gives smallest pointer, Parent gives separator, Left receives key/pointer)
+        const keyToMove = right.keys.shift()!; // Key from right
+        const pointerToMove = right.pointers.shift()!; // Pointer from right
+        const separatorKey = parent.keys[separatorKeyIndex]; // Key from parent
+
+        // 1. Move separator key down to the left child.
+        left.keys.push(separatorKey);
+        left.pointers.push(pointerToMove); // New pointer on the far right of left child
+
+        // 2. Move keyToMove (from right) up to the parent as the new separator.
+        parent.keys[separatorKeyIndex] = keyToMove;
+      }
+    } else {
+      return false; // No redistribution possible
+    }
+
+    // Rewrite all modified nodes.
+    this.writeNode(parent);
+    this.writeNode(left);
+    this.writeNode(right);
+
+    return true;
+  }
+
+  /**
+   * Merges two nodes (left and right) into one (the left node), updates the parent,
+   * and returns the offset of the new merged node (which is the new version of the left node).
+   * The right node pointer and separator key are deleted from the parent.
+   */
+  private mergeNodes(
+    parent: Node<TKey>,
+    left: Node<TKey>,
+    right: Node<TKey>,
+    leftIndex: number,
+    rightIndex: number
+  ): number {
+    // Determine the index of the separator key in the parent.
+    const separatorKeyIndex = leftIndex;
+
+    if (left.isLeaf) {
+      // Case 1: Leaf Merge
+
+      // 1. Combine keys and pointers into the left node.
+      left.keys.push(...right.keys);
+      left.pointers.push(...right.pointers);
+
+      // 2. Update leaf linkage: Left node now points to wherever the Right node pointed.
+      left.nextLeafOffset = right.nextLeafOffset;
+
+      // 3. Remove the separator key and the right pointer from the parent.
+      parent.keys.splice(separatorKeyIndex, 1);
+      parent.pointers.splice(rightIndex, 1); // Delete the pointer to the right node
+    } else {
+      // Case 2: Internal Merge
+
+      // 1. Pull the separator key down from the parent.
+      const separatorKey = parent.keys[separatorKeyIndex];
+      left.keys.push(separatorKey);
+
+      // 2. Combine keys and pointers from the right node.
+      left.keys.push(...right.keys);
+      left.pointers.push(...right.pointers);
+
+      // 3. Remove the separator key and the right pointer from the parent.
+      parent.keys.splice(separatorKeyIndex, 1);
+      parent.pointers.splice(rightIndex, 1); // Delete the pointer to the right node
+    }
+
+    // Rewrite the merged node (left) and the updated parent.
+    const newLeftOffset = this.writeNode(left);
+    this.writeNode(parent);
+
+    return newLeftOffset;
+  }
+
+  /**
    * Uses Binary Search to find the correct insertion index
    * @param keys The array of keys to be searched
    * @param key The key value to find the correct index position
-   * @returns The correct index of `key` in the `keys` array
+   * @returns The correct index of `key` in the `keys` array (index of first key >= target key)
    */
-  private findInsertIndex(keys: TKey[], key: TKey): number {
+  private findIndex(keys: TKey[], key: TKey): number {
     let low = 0;
     let high = keys.length - 1;
     let result = keys.length;
