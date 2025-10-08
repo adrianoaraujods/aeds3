@@ -40,6 +40,10 @@ export class ByteFile<TSchema extends z.ZodObject> {
     this.schema = schema.omit({ id: true });
     this.uniques = uniques;
     this.dataFilePath = `./data/${name}.db`;
+
+    if (!fs.existsSync(this.dataFilePath)) {
+      this.initializeFile(0);
+    }
   }
 
   /**
@@ -177,12 +181,7 @@ export class ByteFile<TSchema extends z.ZodObject> {
       fs.writeFileSync(this.dataFilePath, newBuffer);
 
       return { ok: true, status: 200, data: { ...patchData, id } };
-    } catch (error: any) {
-      if (error.code === "ENOENT") {
-        this.createFile(0);
-        return { ok: false, status: 404 };
-      }
-
+    } catch (error) {
       console.error(error);
     }
 
@@ -227,12 +226,7 @@ export class ByteFile<TSchema extends z.ZodObject> {
       }
 
       return { ok: false, status: 404 };
-    } catch (error: any) {
-      if (error.code === "ENOENT") {
-        this.createFile(0);
-        return { ok: false, status: 404 };
-      }
-
+    } catch (error) {
       console.error(error);
     }
 
@@ -384,7 +378,7 @@ export class ByteFile<TSchema extends z.ZodObject> {
       }
     } catch (error: any) {
       if (error.code === "ENOENT") {
-        this.createFile(0);
+        this.initializeFile(0);
         return { ok: false, status: 404 };
       }
 
@@ -395,43 +389,22 @@ export class ByteFile<TSchema extends z.ZodObject> {
   }
 
   /**
-   * Creates a new database file and initializes the serial counter.
-   *
-   * @param {number} [serial] The starting value for the serial counter. Defaults to 0.
-   * @private
-   */
-  private createFile(serial?: number) {
-    const buffer = Buffer.alloc(4);
-    buffer.writeUInt32BE(serial || 0);
-
-    fs.writeFileSync(this.dataFilePath, buffer);
-  }
-
-  /**
    * Increments the serial counter and writes the new value back to the file.
    *
    * @returns {number} The new serial ID.
    * @private
    */
   private serial(): number {
-    try {
-      const buffer = fs.readFileSync(this.dataFilePath);
+    const buffer = fs.readFileSync(this.dataFilePath);
 
-      const lastId = buffer.readUInt32BE();
-      const id = lastId + 1;
+    const lastId = buffer.readUInt32BE();
+    const id = lastId + 1;
 
-      buffer.writeUInt32BE(id);
+    buffer.writeUInt32BE(id);
 
-      fs.writeFileSync(this.dataFilePath, buffer);
+    fs.writeFileSync(this.dataFilePath, buffer);
 
-      return id;
-    } catch (error: any) {
-      if (error.code === "ENOENT") {
-        this.createFile(1);
-        return 1;
-      }
-      throw error;
-    }
+    return id;
   }
 
   /**
@@ -456,5 +429,18 @@ export class ByteFile<TSchema extends z.ZodObject> {
     lengthBuffer.writeUInt16BE(dataBuffer.length);
 
     return Buffer.concat([idBuffer, isValidBuffer, lengthBuffer, dataBuffer]);
+  }
+
+  /**
+   * Creates a new database file and initializes the serial counter.
+   *
+   * @param {number} [serial] The starting value for the serial counter. Defaults to 0.
+   * @private
+   */
+  private initializeFile(serial?: number) {
+    const serialBuffer = Buffer.alloc(4);
+    serialBuffer.writeUInt32BE(serial || 0);
+
+    fs.writeFileSync(this.dataFilePath, serialBuffer);
   }
 }
