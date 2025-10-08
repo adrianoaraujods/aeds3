@@ -217,8 +217,6 @@ export class BpTree<TSchema extends z.ZodType, TKey extends z.infer<TSchema>> {
     // 1. Traverse down to the correct leaf node.
     while (!currentNode.isLeaf) {
       // Find the index of the child pointer to follow.
-      // The findIndex logic correctly determines the pointer index P[i] such that
-      // all keys in the target child are less than or equal to the search key K.
       const pointerIndex = this.findIndex(currentNode.keys, key);
 
       // Move to the child node.
@@ -232,6 +230,40 @@ export class BpTree<TSchema extends z.ZodType, TKey extends z.infer<TSchema>> {
     if (keyIndex < 0) return null;
 
     return currentNode.pointers[keyIndex];
+  }
+
+  /**
+   * Updates the record offset associated with an existing key.
+   * This is an in-place update, avoiding file growth.
+   * @param key The key value to update.
+   * @param newRecordOffset The new file offset of the corresponding record.
+   * @returns True if the key was found and updated, false otherwise.
+   */
+  public update(key: TKey, newRecordOffset: number): boolean {
+    let currentOffset = this.rootOffset;
+    let currentNode = this.readNode(currentOffset);
+
+    // 1. Traverse to the correct leaf node, tracking its offset.
+    while (!currentNode.isLeaf) {
+      const pointerIndex = this.findIndex(currentNode.keys, key);
+      currentOffset = currentNode.pointers[pointerIndex];
+      currentNode = this.readNode(currentOffset);
+    }
+
+    // 2. Search the Leaf Node for an exact key match.
+    const keyIndex = currentNode.keys.findIndex((k) => k === key);
+
+    if (keyIndex === -1) {
+      return false; // Key not found.
+    }
+
+    // 3. Update the pointer in memory.
+    currentNode.pointers[keyIndex] = newRecordOffset;
+
+    // 4. Overwrite the node data in place on disk.
+    this.overwriteNode(currentNode, currentOffset);
+
+    return true;
   }
 
   /**
@@ -663,6 +695,11 @@ export class BpTree<TSchema extends z.ZodType, TKey extends z.infer<TSchema>> {
     return { medianKey, newNode };
   }
 
+  /**
+   * Writes the serialized node buffer to the end of the file (append-only).
+   * @param node The node to write.
+   * @returns The offset where the node was written.
+   */
   private writeNode(node: Node<TKey>): number {
     const nodeBuffer = this.createNode(node);
 
@@ -678,6 +715,26 @@ export class BpTree<TSchema extends z.ZodType, TKey extends z.infer<TSchema>> {
       fs.writeSync(fd, nodeBuffer, 0, nodeBuffer.length, offset);
 
       return offset;
+    } finally {
+      if (fd !== undefined) fs.closeSync(fd);
+    }
+  }
+
+  /**
+   * Writes the serialized node buffer back to its original offset (in-place update).
+   * This is safe for simple pointer updates where the node size does not change.
+   * @param node The node to write.
+   * @param offset The file offset to overwrite.
+   */
+  private overwriteNode(node: Node<TKey>, offset: number): void {
+    const nodeBuffer = this.createNode(node);
+
+    let fd: number | undefined;
+
+    try {
+      fd = fs.openSync(this.filePath, "r+");
+      // Write the new buffer (including 2-byte length header) starting at the given offset.
+      fs.writeSync(fd, nodeBuffer, 0, nodeBuffer.length, offset);
     } finally {
       if (fd !== undefined) fs.closeSync(fd);
     }
