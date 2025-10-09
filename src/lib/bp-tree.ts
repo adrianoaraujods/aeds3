@@ -10,6 +10,10 @@ type Node<TKey extends z.ZodType> = {
   nextLeafOffset: number;
 };
 
+const ORDER = 4; // 480
+const MAX_KEYS = ORDER - 1;
+const MIN_KEYS = Math.ceil(ORDER / 2) - 1;
+
 export class BpTree<TKey extends z.ZodType> {
   private readonly keySchema;
   private readonly nodeSchema;
@@ -40,6 +44,101 @@ export class BpTree<TKey extends z.ZodType> {
     this.keySchema.parse(key);
 
     if (value < 0) throw new Error("Error: inserting value less than zero.");
+
+    // start the search from the root
+    let currentOffset = this.rootOffset;
+    let currentNode = this.deserializeNode(currentOffset);
+    let pointerIndex = this.findIndex(currentNode.keys, key);
+
+    /** The nodes offsets that was taken to find the correct leaf */
+    const offsetsPath: number[] = [];
+
+    /** The pointers indexes that was taken to find the correct leaf */
+    const pointersPath: number[] = [];
+
+    // searches the correct leaf node to insert
+    while (!currentNode.isLeaf) {
+      // records the path of the nodes traveled
+      offsetsPath.push(currentOffset);
+      pointersPath.push(pointerIndex);
+
+      // move to the next node
+      currentOffset = currentNode.pointers[pointerIndex];
+      currentNode = this.deserializeNode(currentOffset);
+
+      // find correct pointer to follow
+      pointerIndex = this.findIndex(currentNode.keys, key);
+    }
+
+    if (pointerIndex > 0 && currentNode.keys[pointerIndex - 1] === key) {
+      throw new Error(`Error: inserting duplicate key: \`${key}\``);
+    }
+
+    let currentKey = key;
+    let currentPointer = value;
+
+    do {
+      // insert the key and value into the correct position in the current node
+      currentNode.keys.splice(pointerIndex, 0, currentKey);
+      currentNode.pointers.splice(pointerIndex, 0, currentPointer);
+
+      const parentOffset = offsetsPath.pop();
+
+      // check if the node has not overflown
+      if (currentNode.keys.length <= MAX_KEYS) {
+        currentOffset = this.appendNode(currentNode);
+
+        // check if the node has no parent, so it is the root
+        if (parentOffset === undefined) {
+          // the node was the root, so update the root offset
+          this.updateRootOffset(currentOffset);
+          return;
+        }
+
+        // update the parent node to point to the correct updated node
+        const parentNode = this.deserializeNode(parentOffset);
+        pointerIndex = pointersPath.pop()!;
+        parentNode.pointers[pointerIndex] = currentOffset;
+
+        // overwrite the data of the parent node
+        this.overwriteNode(parentNode, parentOffset);
+
+        return;
+      }
+
+      // the node has overflown, so split the node
+      // the current node will be updated to be the left node
+      const [promotedKey, rightNodeOffset] = this.splitNode(
+        currentNode,
+        currentOffset
+      );
+
+      // check if the current node has no parent, so it is the root
+      if (parentOffset === undefined) {
+        // the current node is the root, so create a new root with the promoted key
+        const newRootOffset = this.appendNode({
+          isLeaf: false,
+          keys: [promotedKey],
+          pointers: [currentOffset, rightNodeOffset],
+          nextLeafOffset: 0,
+        });
+
+        // the root has changed, so update the root offset
+        this.updateRootOffset(newRootOffset);
+        return;
+      }
+
+      // change the current node to it's parent
+      currentOffset = parentOffset;
+      currentNode = this.deserializeNode(currentOffset);
+
+      // update the variables to iterate on the current node (parent node)
+      currentKey = promotedKey;
+      currentPointer = rightNodeOffset;
+      pointerIndex = pointersPath.pop()!;
+    } while (pointerIndex !== undefined);
+
+    throw new Error(`Error: failed to promote key: \`${currentKey}\``);
   }
 
   public delete(key: z.infer<TKey>): boolean {
@@ -253,8 +352,8 @@ export class BpTree<TKey extends z.ZodType> {
       const oldNodeBufferLength =
         nodeLengthBuffer.readUInt16BE() + nodeLengthBuffer.length;
 
-      if (nodeBuffer.length !== oldNodeBufferLength) {
-        throw new Error("Error: trying to overwrite a node of diffrent length");
+      if (nodeBuffer.length > oldNodeBufferLength) {
+        throw new Error("Error: trying to overwrite a node with a larger node");
       }
 
       // overwrites the old node data with the new one
@@ -262,5 +361,80 @@ export class BpTree<TKey extends z.ZodType> {
     } finally {
       if (fd !== undefined) fs.closeSync(fd);
     }
+  }
+
+  /**
+   * Uses Binary Search to find the correct insertion index
+   * @param keys The array of keys to be searched
+   * @param key The key value to find the correct index position
+   * @returns The correct index of `key` in the `keys` array (index of first key >= target key)
+   */
+  private findIndex(keys: z.infer<TKey>[], key: z.infer<TKey>): number {
+    let low = 0;
+    let high = keys.length - 1;
+    let result = keys.length;
+
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      if (key < keys[mid]) {
+        result = mid;
+        high = mid - 1;
+      } else {
+        low = mid + 1;
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Splits an overflowing node into two. This method **mutates** the original `node` object to become the left half of the split.
+   * @param node The overflowing node to split.
+   * @param position The position of the node in the file.
+   * @returns A tuple containing the `[promotedKey, rightNodeOffset]`.
+   */
+  private splitNode(
+    node: Node<TKey>,
+    position: number
+  ): [z.infer<TKey>, number] {
+    if (node.keys.length < MAX_KEYS) {
+      throw new Error("Error: trying to split a node that is not full.");
+    }
+
+    const midIndex = Math.floor(ORDER / 2);
+
+    const rightNode: Node<TKey> = {
+      isLeaf: node.isLeaf,
+      keys: [],
+      pointers: [],
+      nextLeafOffset: 0,
+    };
+
+    let promotedKey: z.infer<TKey>;
+
+    if (node.isLeaf) {
+      rightNode.keys = node.keys.splice(midIndex);
+      rightNode.pointers = node.pointers.splice(midIndex);
+
+      // promotes a copy of the first key of the right node
+      promotedKey = rightNode.keys[0];
+    } else {
+      // leaves the promoted key in the left node
+      rightNode.keys = node.keys.splice(midIndex + 1);
+      rightNode.pointers = node.pointers.splice(midIndex + 1);
+
+      // promotes the last key of the left node
+      promotedKey = node.keys.pop()!;
+    }
+
+    const rightNodeOffset = this.appendNode(rightNode);
+
+    if (node.isLeaf) {
+      node.nextLeafOffset = rightNodeOffset;
+    }
+
+    this.overwriteNode(node, position);
+
+    return [promotedKey, rightNodeOffset];
   }
 }
