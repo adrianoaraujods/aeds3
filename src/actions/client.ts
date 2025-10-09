@@ -1,15 +1,15 @@
 "use server";
 
 import { clientSchema } from "@/lib/schemas";
-import { ByteFile } from "@/actions/file";
+import { File } from "@/actions/file";
 
 import type { ActionResponse } from "@/lib/config";
 import type { Client } from "@/lib/schemas";
 
-const file = new ByteFile({
+const file = new File({
   name: "clients",
-  schema: clientSchema,
-  uniques: ["document", "socialName", "socialName"],
+  dataSchema: clientSchema,
+  uniqueFields: ["name", "email", "socialName", "document", "registration"],
 });
 
 export async function createClient(
