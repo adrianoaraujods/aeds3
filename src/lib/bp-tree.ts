@@ -230,6 +230,53 @@ export class BpTree<TKey extends z.ZodType> {
       );
     }
 
+    // start the search from the root
+    let currentOffset = this.rootOffset;
+    let currentNode = this.deserializeNode(currentOffset);
+    let pointerIndex = this.findIndex(currentNode.keys, startKey);
+
+    // searches the leaf that could have the first key in the range
+    while (!currentNode.isLeaf) {
+      // move to the next node
+      currentOffset = currentNode.pointers[pointerIndex];
+      currentNode = this.deserializeNode(currentOffset);
+
+      // find correct pointer to follow
+      pointerIndex = this.findIndex(currentNode.keys, startKey);
+    }
+
+    // transform the insert index to the element index
+    pointerIndex--;
+
+    let currentKey = currentNode.keys[pointerIndex];
+    let currentValue = currentNode.pointers[pointerIndex];
+
+    // check if any key exists in the range
+    if (currentKey < startKey) return results;
+
+    while (currentKey <= endKey) {
+      results.push({ key: currentKey, value: currentValue });
+
+      // check if the leaf still have elements
+      if (pointerIndex < currentNode.keys.length - 1) {
+        // avances to the next element
+        pointerIndex++;
+
+        // checks for the end of the tree
+      } else if (currentNode.nextLeafOffset === 0) {
+        break;
+
+        // the tree still have more leafs
+      } else {
+        // avances to the first element in the next leaf
+        pointerIndex = 0;
+        currentNode = this.deserializeNode(currentNode.nextLeafOffset);
+      }
+
+      currentKey = currentNode.keys[pointerIndex];
+      currentValue = currentNode.pointers[pointerIndex];
+    }
+
     return results;
   }
 
