@@ -12,16 +12,13 @@ type Data = {
 };
 
 async function loadData(): Promise<ActionResponse<Data> & { data: Data }> {
-  let corruptedData = false; // 209
   let serverError = false; // 500
 
   const [clients] = await Promise.allSettled([getAllClients()]).then(
     (results) =>
       results.map((result) => {
         if (result.status === "fulfilled") {
-          if (result.value.status === 209) {
-            corruptedData = true;
-          } else if (result.value.status === 500) {
+          if (result.value.status === 500) {
             serverError = true;
           }
 
@@ -38,10 +35,6 @@ async function loadData(): Promise<ActionResponse<Data> & { data: Data }> {
     orders: [],
     products: [],
   };
-
-  if (corruptedData) {
-    return { ok: false, status: 509, data };
-  }
 
   if (serverError) {
     return { ok: false, status: 500, data };
