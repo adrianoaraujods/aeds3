@@ -246,7 +246,7 @@ export class BpTree<TKey extends z.ZodType> {
     }
 
     // transform the insert index to the element index
-    pointerIndex--;
+    pointerIndex = Math.max(0, pointerIndex - 1);
 
     let currentKey = currentNode.keys[pointerIndex];
     let currentValue = currentNode.pointers[pointerIndex];
