@@ -80,7 +80,7 @@ export class BpTree<TKey extends z.ZodType> {
     do {
       // insert the key and value into the correct position in the current node
       currentNode.keys.splice(pointerIndex, 0, currentKey);
-      currentNode.pointers.splice(pointerIndex, 0, currentPointer);
+      currentNode.pointers.splice(pointerIndex + 1, 0, currentPointer);
 
       const parentOffset = offsetsPath.pop();
 
@@ -102,6 +102,17 @@ export class BpTree<TKey extends z.ZodType> {
 
         // overwrite the data of the parent node
         this.overwriteNode(parentNode, parentOffset);
+
+        // check if the leaf is not the first
+        if (pointerIndex > 0) {
+          // update the previous node to point to the correct updated node
+          const previousNodeOffset = parentNode.pointers[pointerIndex - 1];
+          const previousNode = this.deserializeNode(previousNodeOffset);
+          previousNode.nextLeafOffset = currentOffset;
+
+          // overwrite the data of the previous node
+          this.overwriteNode(previousNode, previousNodeOffset);
+        }
 
         return;
       }
@@ -165,34 +176,61 @@ export class BpTree<TKey extends z.ZodType> {
     return false;
   }
 
+  /**
+   * Searches the tree for a specific key
+   * @param key The searched key
+   * @returns The value associated with the `key` or `null` if not found
+   */
   public find(key: z.infer<TKey>): number | null {
     // will throw an error if the `key` is invalid
     this.keySchema.parse(key);
 
-    try {
-    } catch (error) {
-      console.error(error);
+    // start the search from the root
+    let currentOffset = this.rootOffset;
+    let currentNode = this.deserializeNode(currentOffset);
+    let pointerIndex = this.findIndex(currentNode.keys, key);
+
+    // searches the correct leaf node to insert
+    while (!currentNode.isLeaf) {
+      // move to the next node
+      currentOffset = currentNode.pointers[pointerIndex];
+      currentNode = this.deserializeNode(currentOffset);
+
+      // find correct pointer to follow
+      pointerIndex = this.findIndex(currentNode.keys, key);
+    }
+
+    // check if the searched `key` is present
+    if (currentNode.keys[Math.max(0, pointerIndex - 1)] === key) {
+      return currentNode.pointers[Math.max(0, pointerIndex - 1)];
     }
 
     return null;
   }
 
+  /**
+   * Searches the tree for a specific range
+   * @param startKey The first acceptable `key` (inclusive)
+   * @param endKey The last acceptable `key` (inclusive)
+   * @returns An array of objects containing the keys and values found in that range
+   */
   public findRange(
     startKey: z.infer<TKey>,
     endKey: z.infer<TKey>
-  ): { key: z.infer<TKey>; offset: number }[] {
-    // will throw an error if the `key` is invalid
+  ): { key: z.infer<TKey>; value: number }[] {
+    // will throw an error if the `startKey` or `endKey` are invalid
     this.keySchema.parse(startKey);
     this.keySchema.parse(endKey);
 
-    const result: ReturnType<typeof this.findRange> = [];
+    const results: ReturnType<typeof this.findRange> = [];
 
-    try {
-    } catch (error) {
-      console.error(error);
+    if (startKey > endKey) {
+      throw new Error(
+        "Error: invalid range, starting key is greater than end key"
+      );
     }
 
-    return result;
+    return results;
   }
 
   /**
