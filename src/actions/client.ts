@@ -22,14 +22,8 @@ export async function getClient(id: number): Promise<ActionResponse<Client>> {
   return file.select(id);
 }
 
-export async function getClients(
-  ids: number[]
-): Promise<ActionResponse<(Client | null)[]>> {
-  return file.select(ids);
-}
-
 export async function getAllClients(): Promise<ActionResponse<Client[]>> {
-  return file.select();
+  return file.getAll();
 }
 
 export async function updateClient(

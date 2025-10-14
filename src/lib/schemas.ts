@@ -16,6 +16,7 @@ export const UNITS = ["UN", "PÇ", "PR"] as const;
 export type Currency = (typeof CURRENCIES)[number];
 export const CURRENCIES = ["BRL", "USD"] as const;
 
+export type Address = z.infer<typeof addressSchema>;
 export const addressSchema = z.object({
   street: z.string(),
   country: z.string(),
@@ -25,7 +26,6 @@ export const addressSchema = z.object({
   district: z.string().optional(),
   complement: z.string().optional(),
 });
-export type Address = z.infer<typeof addressSchema>;
 
 export type Client = z.infer<typeof clientSchema>;
 export const clientSchema = z.object({
@@ -91,5 +91,3 @@ export const orderItemSchema = z.object({
   productId: z.int32().positive(), // foreign key from Product
   orderId: z.int32().positive(), // foreign key from Order
 });
-
-export {};
