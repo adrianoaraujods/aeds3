@@ -3,13 +3,13 @@
 import * as React from "react";
 import Link from "next/link";
 
+import { revalidateLogic } from "@tanstack/react-form";
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { email } from "zod";
 
 import { useAppForm } from "@/hooks/use-app-form";
 import { useData } from "@/hooks/use-data";
-import { CURRENCIES } from "@/lib/schemas";
+import { clientSchema, CURRENCIES } from "@/lib/schemas";
 import { formatCNPJ, formatCPF } from "@/lib/utils";
 import { createClient, deleteClient, updateClient } from "@/actions/client";
 import { SelectOption } from "@/components/layout/form";
@@ -62,6 +62,8 @@ function ClientForm({
 
   const form = useAppForm({
     defaultValues: initialValues,
+    validationLogic: revalidateLogic(),
+    validators: { onDynamic: clientSchema },
     onSubmit: async ({ value }) => {
       if (type === "create") {
         handleCreate(value);
@@ -98,12 +100,7 @@ function ClientForm({
         );
         break;
       case 409:
-        toast.warning("Esse cliente já existe do cliente.");
-        break;
-      case 509:
-        toast.error(
-          "Existem dados corrompidos no Banco de Dados. Não foi possível salvar o cliente."
-        );
+        toast.warning("Esse cliente já existe.");
         break;
       default:
         toast.error(
@@ -134,7 +131,7 @@ function ClientForm({
         setCanEdit(false);
       }
 
-      toast.success("Cliente editado com sucesso!");
+      toast.success("Cliente modificado com sucesso!");
 
       return;
     }
@@ -151,14 +148,16 @@ function ClientForm({
       case 409:
         toast.warning("Já existe algum cliente com esses dados.");
         break;
-      case 509:
-        toast.error(
-          "Existem dados corrompidos no Banco de Dados. Não foi possível salvar o cliente."
-        );
-        break;
       default:
         toast.error(
-          "Erro interno do servidor. Não foi possível salvar o cliente, tente novamente."
+          "Erro interno do servidor. Não foi possível salvar o cliente.",
+          {
+            action: (
+              <Button onClick={() => handleEdit(client)}>
+                Tente novamente
+              </Button>
+            ),
+          }
         );
         break;
     }
@@ -175,13 +174,6 @@ function ClientForm({
       <div className="grid gap-x-4 gap-y-1 lg:grid-cols-2 xl:grid-cols-[5fr_3fr_3fr_2fr]">
         <form.AppField
           name="name"
-          validators={{
-            onSubmit: ({ value }) => {
-              if (value.length < 1) {
-                return "Campo obrigatório";
-              }
-            },
-          }}
           children={(field) => (
             <field.TextField
               label="Nome"
@@ -193,15 +185,6 @@ function ClientForm({
 
         <form.AppField
           name="document"
-          validators={{
-            onSubmit: ({ value }) => {
-              if (value.length < 9) {
-                return "CPF inválido";
-              } else if (value.length > 11 && value.length < 14) {
-                return "CPNJ inválido";
-              }
-            },
-          }}
           children={(field) => (
             <field.DocumentNumberField
               label="CPNJ / CPF"
@@ -214,13 +197,6 @@ function ClientForm({
 
         <form.AppField
           name="registration"
-          validators={{
-            onSubmit: ({ value }) => {
-              if (value.length < 9 || value.length > 13) {
-                return "Instrição estadual inválida";
-              }
-            },
-          }}
           children={(field) => (
             <field.TextField
               label="Inscrição Estadual"
@@ -232,13 +208,6 @@ function ClientForm({
 
         <form.AppField
           name="payment"
-          validators={{
-            onSubmit: ({ value }) => {
-              if (value < 0 || value > 255) {
-                return "Condição de pagamento inválida";
-              }
-            },
-          }}
           children={(field) => (
             <field.TextField
               label="Condições de Pagamento"
@@ -254,13 +223,6 @@ function ClientForm({
 
         <form.AppField
           name="socialName"
-          validators={{
-            onSubmit: ({ value }) => {
-              if (value.length < 1) {
-                return "Campo obrigatório";
-              }
-            },
-          }}
           children={(field) => (
             <field.TextField
               label="Razão Social"
@@ -272,15 +234,6 @@ function ClientForm({
 
         <form.AppField
           name="email"
-          validators={{
-            onSubmit: ({ value }) => {
-              const parser = email().safeParse(value);
-
-              if (!parser.success) {
-                return "Email inválido";
-              }
-            },
-          }}
           children={(field) => (
             <field.TextField
               label="E-mail"
@@ -294,13 +247,6 @@ function ClientForm({
 
         <form.AppField
           name="cellphone"
-          validators={{
-            onSubmit: ({ value }) => {
-              if (value.length < 8) {
-                return "Telefone inválido";
-              }
-            },
-          }}
           children={(field) => (
             <field.PhoneField
               label="Telefone"
@@ -336,13 +282,6 @@ function ClientForm({
           <div className="grid gap-x-4 gap-y-1 lg:grid-cols-3">
             <form.AppField
               name="address.country"
-              validators={{
-                onSubmit: ({ value }) => {
-                  if (value.length < 1) {
-                    return "Campo obrigatório";
-                  }
-                },
-              }}
               children={(field) => (
                 <field.TextField
                   label="País"
@@ -354,13 +293,6 @@ function ClientForm({
 
             <form.AppField
               name="address.state"
-              validators={{
-                onSubmit: ({ value }) => {
-                  if (value.length < 1) {
-                    return "Campo obrigatório";
-                  }
-                },
-              }}
               children={(field) => (
                 <field.TextField
                   label="Estado"
@@ -372,13 +304,6 @@ function ClientForm({
 
             <form.AppField
               name="address.city"
-              validators={{
-                onSubmit: ({ value }) => {
-                  if (value.length < 1) {
-                    return "Campo obrigatório";
-                  }
-                },
-              }}
               children={(field) => (
                 <field.TextField
                   label="Cidade"
@@ -403,13 +328,6 @@ function ClientForm({
 
             <form.AppField
               name="address.street"
-              validators={{
-                onSubmit: ({ value }) => {
-                  if (value.length < 1) {
-                    return "Campo obrigatório";
-                  }
-                },
-              }}
               children={(field) => (
                 <field.TextField
                   label="Logradouro"
@@ -421,13 +339,6 @@ function ClientForm({
 
             <form.AppField
               name="address.number"
-              validators={{
-                onSubmit: ({ value }) => {
-                  if (value.length < 1) {
-                    return "Campo obrigatório";
-                  }
-                },
-              }}
               children={(field) => (
                 <field.TextField
                   label="Número"

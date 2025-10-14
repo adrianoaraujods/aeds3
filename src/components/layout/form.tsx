@@ -62,8 +62,13 @@ function TextField({
         {...props}
       />
 
-      <Text size="sm" variant="destructive" asChild>
-        <em role="alert">{field.state.meta.errors.join(", ")}</em>
+      <Text size="sm" variant="destructive">
+        {field.state.meta.errors.length > 0 &&
+          field.state.meta.errors.map((error) => (
+            <em role="alert" key={error.code}>
+              {error.message}
+            </em>
+          ))}
       </Text>
     </div>
   );
@@ -138,8 +143,13 @@ function SelectField({
         </SelectContent>
       </Select>
 
-      <Text size="sm" variant="destructive" asChild>
-        <em role="alert">{field.state.meta.errors.join(", ")}</em>
+      <Text size="sm" variant="destructive">
+        {field.state.meta.errors.length > 0 &&
+          field.state.meta.errors.map((error) => (
+            <em role="alert" key={error.code}>
+              {error.message}
+            </em>
+          ))}
       </Text>
     </div>
   );
@@ -203,8 +213,13 @@ function DocumentNumberField({
         {...props}
       />
 
-      <Text size="sm" variant="destructive" asChild>
-        <em role="alert">{field.state.meta.errors.join(", ")}</em>
+      <Text size="sm" variant="destructive">
+        {field.state.meta.errors.length > 0 &&
+          field.state.meta.errors.map((error) => (
+            <em role="alert" key={error.code}>
+              {error.message}
+            </em>
+          ))}
       </Text>
     </div>
   );
@@ -261,8 +276,13 @@ function PhoneField({
         {...props}
       />
 
-      <Text size="sm" variant="destructive" asChild>
-        <em role="alert">{field.state.meta.errors.join(", ")}</em>
+      <Text size="sm" variant="destructive">
+        {field.state.meta.errors.length > 0 &&
+          field.state.meta.errors.map((error) => (
+            <em role="alert" key={error.code}>
+              {error.message}
+            </em>
+          ))}
       </Text>
     </div>
   );
