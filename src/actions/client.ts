@@ -32,6 +32,8 @@ export async function updateClient(
   return file.update(data.id, data);
 }
 
-export async function deleteClient(id: number): Promise<ActionResponse> {
+export async function deleteClient(
+  id: number
+): Promise<ActionResponse<Client>> {
   return file.delete(id);
 }
