@@ -164,13 +164,38 @@ export class BpTree<TKey extends z.ZodType> {
     return false;
   }
 
-  public update(key: z.infer<TKey>): boolean {
+  /**
+   * Updates the `value` of a `key` in the tree
+   * @param key The key that will have its value updated
+   * @param value The new value that will be used to update
+   * @returns if the key was found and updated
+   */
+  public update(key: z.infer<TKey>, value: number): boolean {
     // will throw an error if the `key` is invalid
     this.keySchema.parse(key);
 
-    try {
-    } catch (error) {
-      console.error(error);
+    // start the search from the root
+    let currentOffset = this.rootOffset;
+    let currentNode = this.deserializeNode(currentOffset);
+    let pointerIndex = this.findIndex(currentNode.keys, key);
+
+    // searches the correct leaf that could have the `key`
+    while (!currentNode.isLeaf) {
+      // move to the next node
+      currentOffset = currentNode.pointers[pointerIndex];
+      currentNode = this.deserializeNode(currentOffset);
+
+      // find correct pointer to follow
+      pointerIndex = this.findIndex(currentNode.keys, key);
+    }
+
+    // check if the searched `key` is present
+    if (currentNode.keys[Math.max(0, pointerIndex - 1)] === key) {
+      // updates the previous value with new `value`
+      currentNode.pointers[Math.max(0, pointerIndex - 1)] = value;
+      this.overwriteNode(currentNode, currentOffset);
+
+      return true;
     }
 
     return false;
