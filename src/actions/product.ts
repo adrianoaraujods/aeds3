@@ -4,7 +4,9 @@ import { productSchema } from "@/lib/schemas";
 import { File } from "@/actions/file";
 
 import type { ActionResponse } from "@/lib/config";
-import type { Product } from "@/lib/schemas";
+import type { Drawing, Product } from "@/lib/schemas";
+
+import { createDrawing } from "./drawing";
 
 const file = new File({
   name: "products",
@@ -13,9 +15,20 @@ const file = new File({
 });
 
 export async function createProduct(
-  data: Omit<Product, "id">
+  product: Omit<Product, "id" | "drawings">,
+  drawings: Omit<Drawing, "id">[]
 ): Promise<ActionResponse<Product>> {
-  return file.insert(data);
+  const drawingsIds: Drawing["id"][] = [];
+
+  for (const drawing of drawings) {
+    const res = await createDrawing(drawing);
+
+    if (!res.ok) return { ok: false, status: res.status };
+
+    drawingsIds.push(res.data.id);
+  }
+
+  return file.insert({ ...product, drawings: drawingsIds });
 }
 
 export async function getProduct(id: number): Promise<ActionResponse<Product>> {
