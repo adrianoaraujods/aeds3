@@ -112,9 +112,11 @@ export class File<TSchema extends z.ZodObject> {
     const updatedRecord = parser.data as z.infer<TSchema>;
 
     try {
-      const { data: oldData } = this.select(id);
+      const res = this.select(id);
 
-      if (!oldData) return { ok: false, status: 404 };
+      if (!res.ok) return res;
+
+      const oldData = res.data;
 
       for (const uniqueField of this.uniqueFields) {
         if (uniqueField === "id") continue;

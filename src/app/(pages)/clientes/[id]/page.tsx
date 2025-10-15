@@ -4,7 +4,9 @@ import * as React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { useData } from "@/hooks/use-data";
+import { toast } from "sonner";
+
+import { getClient } from "@/actions/client";
 import { ClientForm } from "@/components/layout/client";
 import { Section } from "@/components/layout/section";
 import { Heading } from "@/components/typography/heading";
@@ -21,19 +23,35 @@ import { Button } from "@/components/ui/button";
 
 import { LockOpenIcon } from "lucide-react";
 
+import type { Client } from "@/lib/schemas";
+
 export default function ClientPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const id = Number(React.use(params).id);
-  const { data } = useData();
 
-  const client = data.clients.find((client) => client.id === id);
-
-  if (!client) notFound();
-
+  const [client, setClient] = React.useState<Client | null>(null);
   const [canEdit, setCanEdit] = React.useState(false);
+
+  React.useEffect(() => {
+    getClient(id).then((res) => {
+      if (res.ok) {
+        setClient(res.data);
+        return;
+      }
+
+      switch (res.status) {
+        case 404:
+          notFound();
+        default:
+          toast.error("Erro ao carregar o cliente.");
+      }
+    });
+  }, [id]);
+
+  if (!client) return null;
 
   return (
     <Section>
