@@ -10,7 +10,7 @@ type Node<TKey extends z.ZodType> = {
   nextLeafOffset: number;
 };
 
-const ORDER = 4; // 480
+const ORDER = 5; // 480
 const MAX_KEYS = ORDER - 1;
 const MIN_KEYS = Math.ceil(ORDER / 2) - 1;
 
@@ -39,6 +39,14 @@ export class BpTree<TKey extends z.ZodType> {
     }
   }
 
+  // TODO: fix bug when not inserting keys in order, breaks leafs linkage
+
+  /**
+   *
+   * @param key
+   * @param value
+   * @returns
+   */
   public insert(key: z.infer<TKey>, value: number) {
     // will throw an error if the `key` is invalid
     this.keySchema.parse(key);
@@ -80,7 +88,7 @@ export class BpTree<TKey extends z.ZodType> {
     do {
       // insert the key and value into the correct position in the current node
       currentNode.keys.splice(pointerIndex, 0, currentKey);
-      currentNode.pointers.splice(pointerIndex + 1, 0, currentPointer);
+      currentNode.pointers.splice(pointerIndex + 1, 0, currentPointer); // error?
 
       const parentOffset = offsetsPath.pop();
 
@@ -156,10 +164,163 @@ export class BpTree<TKey extends z.ZodType> {
     // will throw an error if the `key` is invalid
     this.keySchema.parse(key);
 
-    try {
-    } catch (error) {
-      console.error(error);
+    // start the search from the root
+    let currentOffset = this.rootOffset;
+    let currentNode = this.deserializeNode(currentOffset);
+    let pointerIndex = this.findIndex(currentNode.keys, key);
+
+    /** The nodes offsets that was taken to find the correct leaf */
+    const offsetsPath: number[] = [];
+
+    /** The pointers indexes that was taken to find the correct leaf */
+    const pointersPath: number[] = [];
+
+    // searches the correct leaf node that could have the `key`
+    while (!currentNode.isLeaf) {
+      // records the path of the nodes traveled
+      offsetsPath.push(currentOffset);
+      pointersPath.push(pointerIndex);
+
+      // move to the next node
+      currentOffset = currentNode.pointers[pointerIndex];
+      currentNode = this.deserializeNode(currentOffset);
+
+      // find correct pointer to follow
+      pointerIndex = this.findIndex(currentNode.keys, key);
     }
+
+    // transform the insert index to the element index
+    pointerIndex = Math.max(0, pointerIndex - 1);
+
+    // check if the searched `key` is not present
+    if (currentNode.keys[pointerIndex] !== key) return false;
+
+    // removes the `key` and its value from the current node
+    currentNode.keys.splice(pointerIndex, 1);
+    currentNode.pointers.splice(pointerIndex, 1);
+
+    const parentOffset = offsetsPath.pop();
+
+    // check if the node has at least the minimum amount of keys
+    if (currentNode.keys.length >= MIN_KEYS || parentOffset === undefined) {
+      // overwrites the current node with the updated keys and values
+      this.overwriteNode(currentNode, currentOffset);
+      return true;
+    }
+
+    // the node did not have the minimum amount of keys
+
+    const parentNode = this.deserializeNode(parentOffset);
+    pointerIndex = pointersPath.pop()!;
+
+    // TODO: wrong, the previous node could be from another parent
+    // check if the previous node exists
+    if (pointerIndex - 1 >= 0) {
+      let previousNodeOffset = parentNode.pointers[pointerIndex - 1];
+      let previousNode = this.deserializeNode(previousNodeOffset);
+
+      // check if the previous node has enough space
+      if (previousNode.keys.length + currentNode.keys.length <= MAX_KEYS) {
+        // merges the previous node with the current node
+        // updates the current node to the be result
+        currentOffset = this.mergeNodes(previousNode, currentNode);
+        currentNode = previousNode;
+
+        // removes the pointer and the key to the old current node
+        parentNode.pointers.splice(pointerIndex, 1);
+        parentNode.keys.splice(pointerIndex - 1, 1);
+
+        // updates the pointer to the new current node
+        parentNode.pointers[pointerIndex - 1] = currentOffset;
+
+        // overwrites the parent node with the changes
+        this.overwriteNode(parentNode, parentOffset);
+
+        // check if the previous node has another node pointing to it
+        if (currentNode.isLeaf && pointerIndex - 1 > 0) {
+          previousNodeOffset = parentNode.pointers[pointerIndex - 2];
+          previousNode = this.deserializeNode(previousNodeOffset);
+
+          // update the pointer to thee current node
+          previousNode.nextLeafOffset = currentOffset;
+          this.overwriteNode(previousNode, previousNodeOffset);
+        }
+
+        return true;
+      }
+
+      // the previous node is full, so take one key pointer pair from it
+      const takenKey = previousNode.keys.pop()!;
+      const takenPointer = previousNode.pointers.pop()!;
+      this.overwriteNode(previousNode, previousNodeOffset);
+
+      // place the key pointer pair in the first position of the current node
+      currentNode.keys.splice(0, 0, takenKey);
+      currentNode.pointers.splice(0, 0, takenPointer);
+      this.overwriteNode(currentNode, currentOffset);
+
+      // update the key in the parent to the first of the current node
+      parentNode.keys[pointerIndex - 1] = currentNode.keys[0];
+      this.overwriteNode(parentNode, parentOffset);
+
+      return true;
+    }
+
+    // TODO: wrong, the next node could be from another parent
+    // check if the next node exits
+    if (pointerIndex + 1 < parentNode.pointers.length) {
+      const nextNodeOffset = parentNode.pointers[pointerIndex + 1];
+      const nextNode = this.deserializeNode(nextNodeOffset);
+
+      // check if the next node has enough space
+      if (nextNode.keys.length + currentNode.keys.length <= MAX_KEYS) {
+        // merges the current node with the next node
+        // updates the current node to the be result
+        currentOffset = this.mergeNodes(currentNode, nextNode);
+
+        // removes the pointer and the key to the next node
+        parentNode.pointers.splice(pointerIndex + 1, 1);
+        parentNode.keys.splice(pointerIndex, 1);
+
+        // updates the pointer to the updated current node
+        parentNode.pointers[pointerIndex] = currentOffset;
+
+        // check if the current node has another node pointing to it
+        if (currentNode.isLeaf && pointerIndex - 1 >= 0) {
+          const previousNodeOffset = parentNode.pointers[pointerIndex - 1];
+          const previousNode = this.deserializeNode(previousNodeOffset);
+
+          // update the pointer to thee current node
+          previousNode.nextLeafOffset = currentOffset;
+          this.overwriteNode(previousNode, previousNodeOffset);
+
+          // update the parent key to the first key in the current node
+          parentNode.keys[pointerIndex - 1] = currentNode.keys[0];
+        }
+
+        // overwrites the parent node with the changes
+        this.overwriteNode(parentNode, parentOffset);
+
+        return true;
+      }
+
+      // the next node is full, so take one key pointer pair from it
+      const takenKey = nextNode.keys.splice(0, 1)[0];
+      const takenPointer = nextNode.pointers.splice(0, 1)[0];
+      this.overwriteNode(nextNode, nextNodeOffset);
+
+      // place the key pointer pair in the end of the current node
+      currentNode.keys.push(takenKey);
+      currentNode.pointers.push(takenPointer);
+      this.overwriteNode(currentNode, currentOffset);
+
+      // update the key in the parent to the first of the current node
+      parentNode.keys[pointerIndex] = currentNode.keys[0];
+      this.overwriteNode(parentNode, parentOffset);
+    }
+
+    // the current node has to be the root
+    this.updateRootOffset(currentOffset);
 
     return false;
   }
@@ -284,18 +445,15 @@ export class BpTree<TKey extends z.ZodType> {
 
       // check if the leaf still have elements
       if (pointerIndex < currentNode.keys.length - 1) {
-        // avances to the next element
+        // avances to the next element in the same leaf node
         pointerIndex++;
-
-        // checks for the end of the tree
-      } else if (currentNode.nextLeafOffset === 0) {
-        break;
-
-        // the tree still have more leafs
-      } else {
-        // avances to the first element in the next leaf
+      } else if (currentNode.nextLeafOffset !== 0) {
+        // the tree still have more leafs, so avances to the first element in the next leaf
         pointerIndex = 0;
         currentNode = this.deserializeNode(currentNode.nextLeafOffset);
+      } else {
+        // the current node is the last leaf
+        break;
       }
 
       currentKey = currentNode.keys[pointerIndex];
@@ -546,5 +704,25 @@ export class BpTree<TKey extends z.ZodType> {
     this.overwriteNode(node, position);
 
     return [promotedKey, rightNodeOffset];
+  }
+
+  /**
+   * Merges the `keys` and the `pointers` of two nodes. This modifies the original left node.
+   * @param leftNode The node that will be modified by reciving the data from the `rightNode`
+   * @param rightNode The node that have the data that will be used to merge
+   * @returns The offset of the new offset of the mergedNode (leaf node)
+   */
+  private mergeNodes(leftNode: Node<TKey>, rightNode: Node<TKey>): number {
+    if (leftNode.isLeaf !== rightNode.isLeaf) {
+      throw new Error("Error: trying to merge a leaf node with a travel node");
+    }
+
+    // concatenates the elements to the left node
+    leftNode.keys.push(...rightNode.keys);
+    leftNode.pointers.push(...rightNode.pointers);
+
+    leftNode.nextLeafOffset = rightNode.nextLeafOffset;
+
+    return this.appendNode(leftNode);
   }
 }
