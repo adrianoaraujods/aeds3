@@ -533,28 +533,29 @@ function ProductTableDrawingsCell({
 }: {
   drawingsIds: Drawing["id"][];
 }) {
-  const [drawings, setDrawings] = React.useState<Drawing[]>([]);
+  const { data } = useData();
 
-  React.useEffect(() => {
-    loadDrawings(drawingsIds).then((drawings) => setDrawings(drawings));
-  }, [drawingsIds]);
-
-  async function loadDrawings(drawingsIds: number[]) {
+  const drawings = React.useMemo(() => {
+    const targets = new Set(drawingsIds);
     const drawings: Drawing[] = [];
 
-    for (const drawingId of drawingsIds) {
-      const res = await getDrawing(drawingId);
+    for (const drawing of data.drawings) {
+      if (targets.has(drawing.id)) {
+        drawings.push(drawing);
+        targets.delete(drawing.id);
 
-      if (!res.ok) {
-        toast.warning(`Erro ao carregar o desenho de id=${drawingId}.`);
-        break;
+        if (targets.size === 0) break;
       }
+    }
 
-      drawings.push(res.data);
+    if (targets.size !== 0) {
+      toast.warning(
+        `Falha ao carregar os desenhos com ids: ${[...targets].join(", ")}`
+      );
     }
 
     return drawings;
-  }
+  }, [data, drawingsIds]);
 
   return (
     <span>
