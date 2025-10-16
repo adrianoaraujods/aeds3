@@ -1,39 +1,65 @@
 import { getAllClients } from "@/actions/client";
+import { getAllDrawings } from "@/actions/drawing";
+import { getAllOrders } from "@/actions/order";
+import { getAllProducts } from "@/actions/product";
 
 import type { ActionResponse } from "@/lib/config";
-import type { Client, Order, Product } from "@/lib/schemas";
+import type { Client, Drawing, Order, Product } from "@/lib/schemas";
 
 type Data = {
   clients: Client[];
-  // quotes: Quote[];
-  // invoices: Invoice[];
-  orders: Order[];
+  drawings: Drawing[];
   products: Product[];
+  // quotes: Quote[];
+  orders: Order[];
+  // invoices: Invoice[];
 };
 
 async function loadData(): Promise<ActionResponse<Data> & { data: Data }> {
   let serverError = false; // 500
 
-  const [clients] = await Promise.allSettled([getAllClients()]).then(
-    (results) =>
-      results.map((result) => {
-        if (result.status === "fulfilled") {
-          if (result.value.status === 500) {
-            serverError = true;
-          }
+  const { clients, drawings, products, orders } = await Promise.allSettled([
+    getAllClients(),
+    getAllDrawings(),
+    getAllProducts(),
+    getAllOrders(),
+  ]).then((results) => {
+    const [clientsResult, drawingsResult, productsResult, ordersResult] =
+      results;
 
-          return result.value.data || [];
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        if (result.value.status === 500) {
+          serverError = true;
         }
+      }
+    }
 
-        serverError = true;
-        return [];
-      })
-  );
+    const data: Data = {
+      clients:
+        clientsResult.status === "rejected"
+          ? []
+          : clientsResult.value.data || [],
+      drawings:
+        drawingsResult.status === "rejected"
+          ? []
+          : drawingsResult.value.data || [],
+      products:
+        productsResult.status === "rejected"
+          ? []
+          : productsResult.value.data || [],
+      orders:
+        ordersResult.status === "rejected" ? [] : ordersResult.value.data || [],
+    };
+
+    return data;
+  });
 
   const data: Data = {
     clients,
-    orders: [],
-    products: [],
+    drawings,
+    products,
+    orders,
   };
 
   if (serverError) {

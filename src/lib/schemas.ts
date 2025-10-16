@@ -18,11 +18,11 @@ export const CURRENCIES = ["BRL", "USD"] as const;
 
 export type Address = z.infer<typeof addressSchema>;
 export const addressSchema = z.object({
-  street: z.string("Esse campo deve ser preenchido."),
-  country: z.string("Esse campo deve ser preenchido."),
-  city: z.string("Esse campo deve ser preenchido."),
-  state: z.string("Esse campo deve ser preenchido."),
-  number: z.string("Esse campo deve ser preenchido."),
+  street: z.string().min(1, "Esse campo deve ser preenchido."),
+  country: z.string().min(1, "Esse campo deve ser preenchido."),
+  city: z.string().min(1, "Esse campo deve ser preenchido."),
+  state: z.string().min(1, "Esse campo deve ser preenchido."),
+  number: z.string().min(1, "Esse campo deve ser preenchido."),
   district: z.string().optional(),
   complement: z.string().optional(),
 });
@@ -31,20 +31,20 @@ export type Client = z.infer<typeof clientSchema>;
 export const clientSchema = z.object({
   id: int32().positive(), // primary key
   document: z // CNPJ | CPF
-    .string("Esse campo deve ser preenchido.")
+    .string()
     .min(11, "Esse campo deve ter pelo menos 11 dígitos.")
     .max(14, "Esse campo deve ter no máximo 14 dígitos.")
     .transform((string) => formatNumber(string)),
   registration: z // Inscrição Estatual
-    .string("Esse campo deve ser preenchido.")
+    .string()
     .min(9, "Esse campo deve ter pelo menos 9 dígitos.")
     .max(13, "Esse campo deve ter no máximo 13 dígitos.")
     .transform((string) => formatNumber(string)),
   socialName: z.string(), // Razão Social
-  name: z.string("Esse campo deve ser preenchido."),
+  name: z.string().min(1, "Esse campo deve ser preenchido."),
   email: z.email("Email inválido."),
   cellphone: z
-    .string("Esse campo deve ser preenchido.")
+    .string()
     .min(10, "Um telefone deve ter pelo menos 10 dígitos.")
     .transform((string) => formatNumber(string)),
   payment: z
@@ -60,15 +60,15 @@ export const clientSchema = z.object({
 export type Drawing = z.infer<typeof drawingSchema>;
 export const drawingSchema = z.object({
   id: int32().positive(), // primary key
-  number: z.string("Esse campo deve ser preenchido."),
+  number: z.string().min(1, "Esse campo deve ser preenchido."),
   url: z.string().optional(),
 });
 
 export type Product = z.infer<typeof productSchema>;
 export const productSchema = z.object({
   id: int32().positive(), // primary key
-  code: z.string("Esse campo deve ser preenchido."),
-  description: z.string("Esse campo deve ser preenchido."),
+  code: z.string().min(1, "Esse campo deve ser preenchido."),
+  description: z.string().min(1, "Esse campo deve ser preenchido."),
   unit: z.enum([...UNITS], "Unidade de medida inválida."),
 
   drawings: z.array(z.int32().positive()), // foreign key from Drawing
@@ -77,7 +77,7 @@ export const productSchema = z.object({
 export type Order = z.infer<typeof orderSchema>;
 export const orderSchema = z.object({
   id: int32().positive(), // primary key
-  number: z.string("Esse campo deve ser preenchido."),
+  number: z.string().min(1, "Esse campo deve ser preenchido."),
   date: z.date("Data inválida."),
   total: z.number(), // sum of all items price times the amount
   state: z.enum([...STATES]),
@@ -88,12 +88,10 @@ export const orderSchema = z.object({
 export type OrderItem = z.infer<typeof orderItemSchema>;
 export const orderItemSchema = z.object({
   id: int32().positive(), // primary key
-  item: z.string("Esse campo deve ser preenchido."),
+  item: z.string().min(1, "Esse campo deve ser preenchido."),
   deliver: z.date("Data inválida."),
-  price: z.number().positive(),
-  amount: z
-    .number("Esse campo deve ser preenchido.")
-    .positive("Quantidade inválida."),
+  price: z.number().positive("Preço inválido."),
+  amount: z.number().positive("Quantidade inválida."),
 
   productId: z.int32().positive(), // foreign key from Product
   orderId: z.int32().positive(), // foreign key from Order

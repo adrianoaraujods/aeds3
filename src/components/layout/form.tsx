@@ -19,7 +19,7 @@ import type { LucideIcon } from "lucide-react";
 type FieldProps = {
   containerProps?: React.ComponentProps<"div">;
   labelProps?: React.ComponentProps<typeof Label>;
-  label: string;
+  label?: string;
 };
 
 type TextFieldProps = FieldProps &
@@ -38,17 +38,19 @@ function TextField({
       className={cn("grid gap-2", containerProps?.className)}
       {...containerProps}
     >
-      <Label
-        className={cn(
-          "data-[error=true]:text-destructive line-clamp-1 text-nowrap text-ellipsis",
-          labelProps?.className
-        )}
-        htmlFor={props.id || field.name}
-        data-error={field.state.meta.errors.length > 0}
-        {...labelProps}
-      >
-        {labelProps?.children || label}
-      </Label>
+      {label && (
+        <Label
+          className={cn(
+            "data-[error=true]:text-destructive line-clamp-1 text-nowrap text-ellipsis",
+            labelProps?.className
+          )}
+          htmlFor={props.id || field.name}
+          data-error={field.state.meta.errors.length > 0}
+          {...labelProps}
+        >
+          {labelProps?.children || label}
+        </Label>
+      )}
 
       <Input
         className={cn(
@@ -101,17 +103,19 @@ function SelectField({
       className={cn("grid gap-2", containerProps?.className)}
       {...containerProps}
     >
-      <Label
-        className={cn(
-          "data-[error=true]:text-destructivetext-nowrap line-clamp-1 text-ellipsis",
-          labelProps?.className
-        )}
-        htmlFor={props.id || field.name}
-        data-error={field.state.meta.errors.length > 0}
-        {...labelProps}
-      >
-        {labelProps?.children || label}
-      </Label>
+      {label && (
+        <Label
+          className={cn(
+            "data-[error=true]:text-destructive line-clamp-1 text-nowrap text-ellipsis",
+            labelProps?.className
+          )}
+          htmlFor={props.id || field.name}
+          data-error={field.state.meta.errors.length > 0}
+          {...labelProps}
+        >
+          {labelProps?.children || label}
+        </Label>
+      )}
 
       <Select
         value={field.state.value}
@@ -188,17 +192,19 @@ function DocumentNumberField({
       className={cn("grid gap-2", containerProps?.className)}
       {...containerProps}
     >
-      <Label
-        className={cn(
-          "data-[error=true]:text-destructive line-clamp-1 text-nowrap text-ellipsis",
-          labelProps?.className
-        )}
-        htmlFor={props.id || field.name}
-        data-error={field.state.meta.errors.length > 0}
-        {...labelProps}
-      >
-        {labelProps?.children || label}
-      </Label>
+      {label && (
+        <Label
+          className={cn(
+            "data-[error=true]:text-destructive line-clamp-1 text-nowrap text-ellipsis",
+            labelProps?.className
+          )}
+          htmlFor={props.id || field.name}
+          data-error={field.state.meta.errors.length > 0}
+          {...labelProps}
+        >
+          {labelProps?.children || label}
+        </Label>
+      )}
 
       <Input
         className={cn(
@@ -251,17 +257,19 @@ function PhoneField({
       className={cn("grid gap-2", containerProps?.className)}
       {...containerProps}
     >
-      <Label
-        className={cn(
-          "data-[error=true]:text-destructivetext-nowrap line-clamp-1 text-ellipsis",
-          labelProps?.className
-        )}
-        htmlFor={props.id || field.name}
-        data-error={field.state.meta.errors.length > 0}
-        {...labelProps}
-      >
-        {label}
-      </Label>
+      {label && (
+        <Label
+          className={cn(
+            "data-[error=true]:text-destructive line-clamp-1 text-nowrap text-ellipsis",
+            labelProps?.className
+          )}
+          htmlFor={props.id || field.name}
+          data-error={field.state.meta.errors.length > 0}
+          {...labelProps}
+        >
+          {labelProps?.children || label}
+        </Label>
+      )}
 
       <Input
         className={cn(

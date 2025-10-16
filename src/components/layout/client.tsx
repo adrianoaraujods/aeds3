@@ -84,7 +84,7 @@ function ClientForm({
 
       toast.success("Cliente criado com sucesso!", {
         action: (
-          <Button asChild>
+          <Button className="ml-auto" variant="outline" asChild>
             <Link href={`/clientes/${res.data.id}`}>Abrir</Link>
           </Button>
         ),

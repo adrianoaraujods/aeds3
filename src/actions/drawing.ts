@@ -7,7 +7,7 @@ import type { ActionResponse } from "@/lib/config";
 import type { Drawing } from "@/lib/schemas";
 
 const file = new File({
-  name: "orders",
+  name: "drawings",
   dataSchema: drawingSchema,
   uniqueFields: ["number"],
 });
