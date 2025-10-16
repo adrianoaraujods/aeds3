@@ -32,7 +32,9 @@ export const DEAFULT_DRAWING: Drawing = { id: 0, number: "" };
 export function DrawingSelect({
   drawing,
   setDrawing,
-}: {
+  className,
+  ...props
+}: React.ComponentProps<typeof Button> & {
   drawing: Drawing;
   setDrawing: React.Dispatch<React.SetStateAction<Drawing>>;
 }) {
@@ -47,7 +49,8 @@ export function DrawingSelect({
         <Button
           variant="outline"
           role="combobox"
-          className="w-[200px] justify-between"
+          className={cn("w-[200px] justify-between", className)}
+          {...props}
         >
           {drawing.id === 0 ? "Novo desenho" : drawing.number}
 

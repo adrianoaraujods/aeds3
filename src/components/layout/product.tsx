@@ -175,12 +175,12 @@ function ProductForm({
 
       if (type === "create") {
         handleCreate(product);
+        form.reset();
       } else {
         handleEdit(product);
       }
 
       setSelectedDrawing(DEAFULT_DRAWING);
-      form.reset();
     },
   });
 
@@ -330,6 +330,7 @@ function ProductForm({
                 <DrawingSelect
                   drawing={selectedDrawing}
                   setDrawing={setSelectedDrawing}
+                  disabled={!canEdit}
                 />
 
                 <Button
@@ -337,6 +338,7 @@ function ProductForm({
                   size="icon"
                   type="button"
                   onClick={() => field.pushValue(selectedDrawing)}
+                  disabled={!canEdit}
                 >
                   <PlusIcon />
                 </Button>
@@ -357,12 +359,16 @@ function ProductForm({
                       >
                         <form.AppField
                           name={`drawings[${i}].number`}
-                          children={(subfield) => <subfield.TextField />}
+                          children={(subfield) => (
+                            <subfield.TextField disabled={!canEdit} />
+                          )}
                         />
 
                         <form.AppField
                           name={`drawings[${i}].url`}
-                          children={(subfield) => <subfield.TextField />}
+                          children={(subfield) => (
+                            <subfield.TextField disabled={!canEdit} />
+                          )}
                         />
 
                         <Button
@@ -371,6 +377,7 @@ function ProductForm({
                           size="icon"
                           type="button"
                           onClick={() => field.removeValue(i)}
+                          disabled={!canEdit}
                         >
                           <XIcon />
                         </Button>
@@ -561,7 +568,13 @@ function ProductTableDrawingsCell({
     <span>
       {drawings.map(({ id, number, url }, i) => (
         <React.Fragment key={id}>
-          {!url ? number : <Link href={url}>{number}</Link>}
+          {!url ? (
+            number
+          ) : (
+            <Link href={url} target="_blank">
+              {number}
+            </Link>
+          )}
           {i < drawings.length - 1 && ", "}
         </React.Fragment>
       ))}

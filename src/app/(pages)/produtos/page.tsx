@@ -25,9 +25,7 @@ export default function ProductsPage() {
         </Button>
       </header>
 
-      <div>
-        <ProductTable />
-      </div>
+      <ProductTable />
     </>
   );
 }
