@@ -6,6 +6,7 @@ import Link from "next/link";
 import { revalidateLogic } from "@tanstack/react-form";
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { toast } from "sonner";
+import z from "zod";
 
 import { useAppForm } from "@/hooks/use-app-form";
 import { useData } from "@/hooks/use-data";
@@ -52,6 +53,8 @@ type ClientFormProps = {
   setCanEdit?: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
+// TODO: `form.reset()` not updating `cellphone` and `document` fields
+
 function ClientForm({
   initialValues,
   type,
@@ -62,8 +65,8 @@ function ClientForm({
 
   const form = useAppForm({
     defaultValues: initialValues,
-    validationLogic: revalidateLogic(),
-    validators: { onDynamic: clientSchema },
+    validationLogic: revalidateLogic({ modeAfterSubmission: "blur" }),
+    validators: { onDynamic: clientSchema.extend({ id: z.number() }) },
     onSubmit: async ({ value }) => {
       if (type === "create") {
         handleCreate(value);
@@ -89,6 +92,8 @@ function ClientForm({
           </Button>
         ),
       });
+
+      form.reset();
 
       return;
     }
@@ -318,11 +323,7 @@ function ClientForm({
             <form.AppField
               name="address.district"
               children={(field) => (
-                <field.TextField
-                  label="Bairro"
-                  disabled={canEdit === false}
-                  required
-                />
+                <field.TextField label="Bairro" disabled={canEdit === false} />
               )}
             />
 
@@ -354,7 +355,6 @@ function ClientForm({
                 <field.TextField
                   label="Complemento"
                   disabled={canEdit === false}
-                  required
                 />
               )}
             />

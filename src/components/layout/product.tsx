@@ -81,7 +81,7 @@ function ProductForm({
 
   const form = useAppForm({
     defaultValues: initialValues,
-    validationLogic: revalidateLogic({ mode: "blur" }),
+    validationLogic: revalidateLogic({ modeAfterSubmission: "blur" }),
     validators: { onDynamic: formProductSchema },
     onSubmit: async ({ value }) => {
       const drawingsIds: Drawing["id"][] = [];
