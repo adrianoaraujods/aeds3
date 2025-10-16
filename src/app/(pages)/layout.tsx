@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import { loadData } from "@/actions/data";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { DataProvider } from "@/components/layout/data-provider";
+import { Section } from "@/components/layout/section";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
 export default async function PagesLayout({
@@ -17,8 +18,10 @@ export default async function PagesLayout({
       <SidebarProvider>
         <AppSidebar />
 
-        <SidebarInset>
-          <main>{children}</main>
+        <SidebarInset className="overflow-x-hidden">
+          <Section asChild>
+            <main>{children}</main>
+          </Section>
         </SidebarInset>
       </SidebarProvider>
 

@@ -52,13 +52,21 @@ const formProductSchema = productSchema.extend({
   drawings: z.array(drawingSchema.extend({ id: z.number() })),
 });
 
-type FormProduct = z.infer<typeof formProductSchema>;
+export type FormProduct = z.infer<typeof formProductSchema>;
 
 type ProductFormProps = {
   initialValues: FormProduct;
   type: "create" | "edit";
   canEdit?: boolean;
   setCanEdit?: React.Dispatch<React.SetStateAction<boolean>>;
+};
+
+export const DEFAULT_PRODUCT: FormProduct = {
+  id: 0,
+  code: "",
+  description: "",
+  drawings: [],
+  unit: "UN",
 };
 
 function ProductForm({

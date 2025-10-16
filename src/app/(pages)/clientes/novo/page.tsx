@@ -2,7 +2,6 @@ import * as React from "react";
 import Link from "next/link";
 
 import { ClientForm } from "@/components/layout/client";
-import { Section } from "@/components/layout/section";
 import { Heading } from "@/components/typography/heading";
 import {
   Breadcrumb,
@@ -38,7 +37,7 @@ const defaultClient: Client = {
 
 export default function CreateClientPage() {
   return (
-    <Section>
+    <>
       <header className="mb-4 flex justify-between border-b">
         <Breadcrumb>
           <BreadcrumbList>
@@ -62,6 +61,6 @@ export default function CreateClientPage() {
       </header>
 
       <ClientForm initialValues={defaultClient} type="create" />
-    </Section>
+    </>
   );
 }

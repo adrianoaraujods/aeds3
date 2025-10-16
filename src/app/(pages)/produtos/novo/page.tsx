@@ -1,7 +1,7 @@
 import * as React from "react";
 import Link from "next/link";
 
-import { ProductForm } from "@/components/layout/product";
+import { DEFAULT_PRODUCT, ProductForm } from "@/components/layout/product";
 import { Section } from "@/components/layout/section";
 import { Heading } from "@/components/typography/heading";
 import {
@@ -12,16 +12,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-
-import type { ProductFormFields } from "@/components/layout/product";
-
-const defaultProduct: ProductFormFields = {
-  id: 0,
-  code: "",
-  description: "",
-  drawings: [],
-  unit: "UN",
-};
 
 export default function CreateProductPage() {
   return (
@@ -48,7 +38,7 @@ export default function CreateProductPage() {
         </Breadcrumb>
       </header>
 
-      <ProductForm initialValues={defaultProduct} type="create" />
+      <ProductForm initialValues={DEFAULT_PRODUCT} type="create" />
     </Section>
   );
 }

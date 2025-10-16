@@ -8,7 +8,6 @@ import { toast } from "sonner";
 
 import { getClient } from "@/actions/client";
 import { ClientForm } from "@/components/layout/client";
-import { Section } from "@/components/layout/section";
 import { Heading } from "@/components/typography/heading";
 import { Text } from "@/components/typography/text";
 import {
@@ -54,7 +53,7 @@ export default function ClientPage({
   if (!client) return null;
 
   return (
-    <Section>
+    <>
       <header className="mb-4 flex justify-between border-b">
         <Breadcrumb>
           <BreadcrumbList>
@@ -91,6 +90,6 @@ export default function ClientPage({
         canEdit={canEdit}
         setCanEdit={setCanEdit}
       />
-    </Section>
+    </>
   );
 }
