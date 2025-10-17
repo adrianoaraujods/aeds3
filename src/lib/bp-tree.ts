@@ -10,7 +10,7 @@ type Node<TKey extends z.ZodType> = {
   nextLeafOffset: number;
 };
 
-const ORDER = 5; // 480
+const ORDER = 100; // 480
 const MAX_KEYS = ORDER - 1;
 const MIN_KEYS = Math.ceil(ORDER / 2) - 1;
 
