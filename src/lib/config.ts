@@ -1,4 +1,4 @@
-import { BoxesIcon, Building2Icon, ClipboardListIcon } from "lucide-react";
+import { BoxesIcon, Building2Icon } from "lucide-react";
 
 import type { LucideIcon } from "lucide-react";
 
@@ -49,7 +49,7 @@ const NAVIGATION: Navigation = [
   {
     title: "Páginas",
     items: [
-      { title: "Pedidos", url: "/pedidos", icon: ClipboardListIcon },
+      // { title: "Pedidos", url: "/pedidos", icon: ClipboardListIcon },
       // { title: "Cotações", url: "/cotacoes", icon: ClipboardPenLineIcon },
       // { title: "Notas Fiscais", url: "/notas-fiscais", icon: FileTextIcon },
       { title: "Clientes", url: "/clientes", icon: Building2Icon },

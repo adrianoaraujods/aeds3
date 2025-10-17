@@ -330,7 +330,7 @@ function ProductForm({
                 <DrawingSelect
                   drawing={selectedDrawing}
                   setDrawing={setSelectedDrawing}
-                  disabled={!canEdit}
+                  disabled={canEdit === false}
                 />
 
                 <Button
@@ -338,7 +338,7 @@ function ProductForm({
                   size="icon"
                   type="button"
                   onClick={() => field.pushValue(selectedDrawing)}
-                  disabled={!canEdit}
+                  disabled={canEdit === false}
                 >
                   <PlusIcon />
                 </Button>
@@ -360,14 +360,14 @@ function ProductForm({
                         <form.AppField
                           name={`drawings[${i}].number`}
                           children={(subfield) => (
-                            <subfield.TextField disabled={!canEdit} />
+                            <subfield.TextField disabled={canEdit === false} />
                           )}
                         />
 
                         <form.AppField
                           name={`drawings[${i}].url`}
                           children={(subfield) => (
-                            <subfield.TextField disabled={!canEdit} />
+                            <subfield.TextField disabled={canEdit === false} />
                           )}
                         />
 
@@ -377,7 +377,7 @@ function ProductForm({
                           size="icon"
                           type="button"
                           onClick={() => field.removeValue(i)}
-                          disabled={!canEdit}
+                          disabled={canEdit === false}
                         >
                           <XIcon />
                         </Button>
