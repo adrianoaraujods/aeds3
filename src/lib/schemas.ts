@@ -1,6 +1,6 @@
-import z, { int32 } from "zod";
+import z from "zod";
 
-import { formatNumber } from "./utils";
+import { formatNumber } from "@/lib/utils";
 
 export type State = (typeof STATES)[number];
 export const STATES = [
@@ -16,6 +16,11 @@ export const UNITS = ["UN", "PÇ", "PR"] as const;
 export type Currency = (typeof CURRENCIES)[number];
 export const CURRENCIES = ["BRL", "USD"] as const;
 
+export const CURRENCIES_LABELS: { [currency in Currency]: string } = {
+  BRL: "Real",
+  USD: "Dólar",
+};
+
 export type Address = z.infer<typeof addressSchema>;
 export const addressSchema = z.object({
   street: z.string().min(1, "Esse campo deve ser preenchido."),
@@ -29,7 +34,7 @@ export const addressSchema = z.object({
 
 export type Client = z.infer<typeof clientSchema>;
 export const clientSchema = z.object({
-  id: int32().positive(), // primary key
+  id: z.int32().positive(), // primary key
   document: z // CNPJ | CPF
     .string()
     .min(11, "Esse campo deve ter pelo menos 11 dígitos.")
@@ -59,14 +64,14 @@ export const clientSchema = z.object({
 
 export type Drawing = z.infer<typeof drawingSchema>;
 export const drawingSchema = z.object({
-  id: int32().positive(), // primary key
+  id: z.int32().positive(), // primary key
   number: z.string().min(1, "Esse campo deve ser preenchido."),
   url: z.string().optional(),
 });
 
 export type Product = z.infer<typeof productSchema>;
 export const productSchema = z.object({
-  id: int32().positive(), // primary key
+  id: z.int32().positive(), // primary key
   code: z.string().min(1, "Esse campo deve ser preenchido."),
   description: z.string().min(1, "Esse campo deve ser preenchido."),
   unit: z.enum([...UNITS], "Unidade de medida inválida."),
@@ -76,18 +81,19 @@ export const productSchema = z.object({
 
 export type Order = z.infer<typeof orderSchema>;
 export const orderSchema = z.object({
-  id: int32().positive(), // primary key
+  id: z.int32().positive(), // primary key
   number: z.string().min(1, "Esse campo deve ser preenchido."),
   date: z.date("Data inválida."),
   total: z.number(), // sum of all items price times the amount
   state: z.enum([...STATES]),
 
+  items: z.array(z.int32().positive()), // foreign key from OrderItems
   clientId: z.int32().positive(), // foreign key from Client
 });
 
 export type OrderItem = z.infer<typeof orderItemSchema>;
 export const orderItemSchema = z.object({
-  id: int32().positive(), // primary key
+  id: z.int32().positive(), // primary key
   item: z.string().min(1, "Esse campo deve ser preenchido."),
   deliver: z.date("Data inválida."),
   price: z.number().positive("Preço inválido."),

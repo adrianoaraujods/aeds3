@@ -1,7 +1,7 @@
 import * as React from "react";
 import Link from "next/link";
 
-import { ClientTable } from "@/components/layout/client";
+import { ClientsTable } from "@/components/table/clients-table";
 import { Heading } from "@/components/typography/heading";
 import { Text } from "@/components/typography/text";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,7 @@ export default function ClientsPage() {
       </header>
 
       <div>
-        <ClientTable />
+        <ClientsTable />
       </div>
     </>
   );

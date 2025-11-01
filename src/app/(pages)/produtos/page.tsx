@@ -1,7 +1,7 @@
 import * as React from "react";
 import Link from "next/link";
 
-import { ProductTable } from "@/components/layout/product";
+import { ProductsTable } from "@/components/table/products-table";
 import { Heading } from "@/components/typography/heading";
 import { Text } from "@/components/typography/text";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ export default function ProductsPage() {
         </Button>
       </header>
 
-      <ProductTable />
+      <ProductsTable />
     </>
   );
 }

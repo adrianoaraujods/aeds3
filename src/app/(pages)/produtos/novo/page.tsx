@@ -1,7 +1,7 @@
 import * as React from "react";
 import Link from "next/link";
 
-import { DEFAULT_PRODUCT, ProductForm } from "@/components/layout/product";
+import { DEFAULT_PRODUCT, ProductForm } from "@/components/form/product-form";
 import { Section } from "@/components/layout/section";
 import { Heading } from "@/components/typography/heading";
 import {

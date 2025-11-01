@@ -8,7 +8,7 @@ import { toast } from "sonner";
 
 import { getDrawing } from "@/actions/drawing";
 import { getProduct } from "@/actions/product";
-import { ProductForm } from "@/components/layout/product";
+import { ProductForm } from "@/components/form/product-form";
 import { Heading } from "@/components/typography/heading";
 import { Text } from "@/components/typography/text";
 import {
@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 
 import { LockOpenIcon } from "lucide-react";
 
-import type { FormProduct } from "@/components/layout/product";
+import type { FormProduct } from "@/components/form/product-form";
 
 export default function ProductPage({
   params,

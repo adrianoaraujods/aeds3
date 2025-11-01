@@ -1,7 +1,7 @@
 import * as React from "react";
 import Link from "next/link";
 
-import { ClientForm } from "@/components/layout/client";
+import { ClientForm } from "@/components/form/client-form";
 import { Heading } from "@/components/typography/heading";
 import {
   Breadcrumb,

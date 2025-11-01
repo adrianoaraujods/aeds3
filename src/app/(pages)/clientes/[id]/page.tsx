@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import { toast } from "sonner";
 
 import { getClient } from "@/actions/client";
-import { ClientForm } from "@/components/layout/client";
+import { ClientForm } from "@/components/form/client-form";
 import { Heading } from "@/components/typography/heading";
 import { Text } from "@/components/typography/text";
 import {
