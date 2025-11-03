@@ -33,7 +33,7 @@ import {
 
 import { EllipsisIcon, EyeIcon, Trash2Icon } from "lucide-react";
 
-import type { Client } from "@/lib/schemas";
+import type { Client } from "@/schemas/client";
 
 export function ClientsTable() {
   const { data } = useData();

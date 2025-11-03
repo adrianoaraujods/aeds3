@@ -1,37 +1,37 @@
 "use server";
 
-import { orderItemSchema } from "@/lib/schemas";
 import { File } from "@/actions/file";
+import { orderItemSchema } from "@/schemas/order";
 
 import type { ActionResponse } from "@/lib/config";
-import type { OrderItem } from "@/lib/schemas";
+import type { OrderItem, OrderItemData } from "@/schemas/order";
 
 const file = new File({
-  name: "orders",
-  dataSchema: orderItemSchema,
-  uniqueFields: ["item"],
+  name: "order-items",
+  schema: orderItemSchema,
+  primaryKey: "id",
 });
 
 export async function createOrderItem(
-  data: Omit<OrderItem, "id">
+  data: OrderItemData
 ): Promise<ActionResponse<OrderItem>> {
   return file.insert(data);
 }
 
 export async function getOrderItem(
-  id: number
+  id: OrderItem["id"]
 ): Promise<ActionResponse<OrderItem>> {
-  return file.select(id);
+  return file.select("id", id);
 }
 
 export async function updateOrderItem(
-  data: OrderItem
+  data: OrderItemData
 ): Promise<ActionResponse<OrderItem>> {
-  return file.update(data.id, data);
+  return file.update(data);
 }
 
 export async function deleteOrderItem(
-  id: number
+  id: OrderItem["id"]
 ): Promise<ActionResponse<OrderItem>> {
   return file.delete(id);
 }

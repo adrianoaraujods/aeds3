@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 
 import { LockOpenIcon } from "lucide-react";
 
-import type { Client } from "@/lib/schemas";
+import type { ClientData } from "@/schemas/client";
 
 export default function ClientPage({
   params,
@@ -31,7 +31,7 @@ export default function ClientPage({
 }) {
   const id = Number(React.use(params).id);
 
-  const [client, setClient] = React.useState<Client | null>(null);
+  const [client, setClient] = React.useState<ClientData | null>(null);
   const [canEdit, setCanEdit] = React.useState(false);
 
   React.useEffect(() => {

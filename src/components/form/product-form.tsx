@@ -5,45 +5,28 @@ import Link from "next/link";
 
 import { revalidateLogic } from "@tanstack/react-form";
 import { toast } from "sonner";
-import z from "zod";
 
 import { useAppForm } from "@/hooks/use-app-form";
 import { useData } from "@/hooks/use-data";
-import { drawingSchema, productSchema, UNITS } from "@/lib/schemas";
 import { createDrawing, getDrawing, updateDrawing } from "@/actions/drawing";
 import { createProduct, updateProduct } from "@/actions/product";
-import {
-  DEAFULT_DRAWING,
-  DrawingSelect,
-} from "@/components/form/drawing-select";
+import { DrawingSelect } from "@/components/form/drawing-select";
 import { Heading } from "@/components/typography/heading";
 import { Text } from "@/components/typography/text";
 import { Button } from "@/components/ui/button";
+import { DEAFULT_DRAWING } from "@/schemas/drawing";
+import { productDataSchema, UNITS } from "@/schemas/product";
 
 import { PlusIcon, XIcon } from "lucide-react";
 
-import type { Drawing, Product } from "@/lib/schemas";
-
-const formProductSchema = productSchema.extend({
-  id: z.number(),
-  drawings: z.array(drawingSchema.extend({ id: z.number() })),
-});
-
-export type FormProduct = z.infer<typeof formProductSchema>;
+import type { Drawing, DrawingData } from "@/schemas/drawing";
+import type { Product, ProductData } from "@/schemas/product";
 
 type ProductFormProps = {
-  initialValues: FormProduct;
+  initialValues: ProductData;
   type: "create" | "edit";
   canEdit?: boolean;
   setCanEdit?: React.Dispatch<React.SetStateAction<boolean>>;
-};
-
-export const DEFAULT_PRODUCT: FormProduct = {
-  id: 0,
-  code: "",
-  description: "",
-  drawings: [],
-  unit: "UN",
 };
 
 export function ProductForm({
@@ -54,12 +37,12 @@ export function ProductForm({
 }: ProductFormProps) {
   const { setData } = useData();
   const [selectedDrawing, setSelectedDrawing] =
-    React.useState<Drawing>(DEAFULT_DRAWING);
+    React.useState<DrawingData>(DEAFULT_DRAWING);
 
   const form = useAppForm({
     defaultValues: initialValues,
     validationLogic: revalidateLogic({ modeAfterSubmission: "blur" }),
-    validators: { onDynamic: formProductSchema },
+    validators: { onDynamic: productDataSchema },
     onSubmit: async ({ value }) => {
       const drawingsIds: Drawing["id"][] = [];
 

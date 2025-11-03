@@ -22,12 +22,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { DEAFULT_DRAWING } from "@/schemas/drawing";
 
 import { CheckIcon, ChevronsUpDownIcon } from "lucide-react";
 
-import type { Drawing } from "@/lib/schemas";
-
-export const DEAFULT_DRAWING: Drawing = { id: 0, number: "" };
+import type { DrawingData } from "@/schemas/drawing";
 
 export function DrawingSelect({
   drawing,
@@ -35,8 +34,8 @@ export function DrawingSelect({
   className,
   ...props
 }: React.ComponentProps<typeof Button> & {
-  drawing: Drawing;
-  setDrawing: React.Dispatch<React.SetStateAction<Drawing>>;
+  drawing: DrawingData;
+  setDrawing: React.Dispatch<React.SetStateAction<DrawingData>>;
 }) {
   const [isOpen, setIsOpen] = React.useState(false);
   const {
@@ -67,7 +66,7 @@ export function DrawingSelect({
 
             <CommandGroup>
               <CommandItem
-                value={"0"}
+                value="Novo desenho"
                 onSelect={() => {
                   setDrawing(DEAFULT_DRAWING);
                   setIsOpen(false);
@@ -86,7 +85,7 @@ export function DrawingSelect({
               {drawings.map(({ id, number }) => (
                 <CommandItem
                   key={id}
-                  value={String(id)}
+                  value={number}
                   onSelect={async () => {
                     const res = await getDrawing(id);
 

@@ -1,14 +1,15 @@
 "use server";
 
-import { drawingSchema } from "@/lib/schemas";
 import { File } from "@/actions/file";
+import { drawingSchema } from "@/schemas/drawing";
 
 import type { ActionResponse } from "@/lib/config";
-import type { Drawing } from "@/lib/schemas";
+import type { Drawing } from "@/schemas/drawing";
 
 const file = new File({
   name: "drawings",
-  dataSchema: drawingSchema,
+  schema: drawingSchema,
+  primaryKey: "id",
   uniqueFields: ["number"],
 });
 
@@ -19,7 +20,7 @@ export async function createDrawing(
 }
 
 export async function getDrawing(id: number): Promise<ActionResponse<Drawing>> {
-  return file.select(id);
+  return file.select("id", id);
 }
 
 export async function getAllDrawings(): Promise<ActionResponse<Drawing[]>> {
@@ -29,7 +30,7 @@ export async function getAllDrawings(): Promise<ActionResponse<Drawing[]>> {
 export async function updateDrawing(
   data: Drawing
 ): Promise<ActionResponse<Drawing>> {
-  return file.update(data.id, data);
+  return file.update(data);
 }
 
 export async function deleteDrawing(

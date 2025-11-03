@@ -11,29 +11,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-
-import type { Client } from "@/lib/schemas";
-
-const defaultClient: Client = {
-  id: 0,
-  document: "",
-  socialName: "",
-  registration: "",
-  name: "",
-  email: "",
-  cellphone: "",
-  payment: 30,
-  currency: "BRL",
-  address: {
-    street: "",
-    country: "",
-    city: "",
-    state: "",
-    number: "",
-    district: "",
-    complement: "",
-  },
-};
+import { DEFAULT_CLIENT } from "@/schemas/client";
 
 export default function CreateClientPage() {
   return (
@@ -60,7 +38,7 @@ export default function CreateClientPage() {
         </Breadcrumb>
       </header>
 
-      <ClientForm initialValues={defaultClient} type="create" />
+      <ClientForm initialValues={DEFAULT_CLIENT} type="create" />
     </>
   );
 }

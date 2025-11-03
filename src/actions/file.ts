@@ -2,57 +2,65 @@ import * as fs from "fs";
 import z from "zod";
 
 import { BpTree } from "@/lib/bp-tree";
+import { deserialize, serialize } from "@/lib/buffer";
 import { ActionResponse } from "@/lib/config";
-import { deserialize, serialize } from "@/lib/files";
 
-type FileConfig<TSchema extends z.ZodObject> = {
-  name: string;
-  dataSchema: TSchema;
-  uniqueFields: (keyof z.infer<TSchema>)[];
-  indexedFields?: (keyof z.infer<TSchema>)[];
-};
+export class File<
+  Schema extends z.ZodObject,
+  PrimaryKey extends keyof z.infer<Schema>,
+> {
+  private readonly filePath: string;
 
-const MAX_ID = 21_474_836;
+  private readonly schema: Schema;
 
-export class File<TSchema extends z.ZodObject> {
-  private readonly dataFilePath: string;
-  private readonly dataSchema: z.ZodObject;
-  private readonly uniqueFields: (keyof z.infer<TSchema>)[];
+  private readonly primaryKey: PrimaryKey;
+  private readonly uniqueFields: (keyof z.infer<Schema>)[];
   private readonly indexes: {
-    [K in keyof z.infer<typeof this.dataSchema>]?: BpTree<any>;
-  } & { id: BpTree<z.ZodUInt32> } = {} as { id: BpTree<z.ZodUInt32> };
+    [K in keyof z.infer<Schema>]?: BpTree<any>;
+  } = {};
 
   constructor({
     name,
-    dataSchema,
-    uniqueFields,
+    schema,
+    primaryKey,
+    uniqueFields = [],
     indexedFields = [],
-  }: FileConfig<TSchema>) {
-    this.dataFilePath = `./data/${name}.db`;
-    this.uniqueFields = [...new Set(["id", ...uniqueFields])];
+  }: {
+    name: string;
+    schema: Schema;
+    primaryKey: PrimaryKey;
+    uniqueFields?: (keyof z.infer<Schema>)[];
+    indexedFields?: (keyof z.infer<Schema>)[];
+  }) {
+    this.filePath = `./data/${name}.db`;
+    this.uniqueFields = [...new Set([primaryKey, ...uniqueFields])];
+    this.schema = schema;
+    this.primaryKey = primaryKey;
 
-    this.dataSchema = dataSchema.omit({ id: true }).extend({ id: z.uint32() });
-
-    if (!fs.existsSync(this.dataFilePath)) {
-      this.initializeFile();
+    if (!fs.existsSync(this.filePath)) {
+      this.createFile();
     }
 
     const indexedKeys = [...new Set([...this.uniqueFields, ...indexedFields])];
 
     for (const key of indexedKeys) {
       const tree = new BpTree(
-        `./data/${name}.${String(key)}.index.db`,
-        this.dataSchema.shape[String(key)]
+        `./data/indexes/${name}.${String(key)}.idx`,
+        this.schema.shape[String(key)]
       );
 
-      this.indexes[String(key)] = tree;
+      this.indexes[key] = tree;
     }
   }
 
-  public insert(
-    data: Omit<z.infer<TSchema>, "id">
-  ): ActionResponse<z.infer<TSchema>> {
-    const parser = this.dataSchema.omit({ id: true }).safeParse(data);
+  public insert(data: unknown): ActionResponse<z.infer<Schema>> {
+    let schema: z.ZodObject = this.schema;
+
+    if (this.primaryKey === "id") {
+      schema = schema.omit({ id: true });
+    }
+
+    const parser = schema.safeParse(data);
 
     if (!parser.success) return { ok: false, status: 400 };
 
@@ -60,14 +68,17 @@ export class File<TSchema extends z.ZodObject> {
       for (const uniqueField of this.uniqueFields) {
         if (uniqueField === "id") continue;
 
-        const dataOffset = this.indexes[String(uniqueField)]!.find(
+        const dataOffset = this.indexes[uniqueField]!.find(
           parser.data[String(uniqueField)]
         );
 
         if (dataOffset !== null) return { ok: false, status: 409 };
       }
 
-      const record = { ...parser.data, id: this.serial() } as z.infer<TSchema>;
+      const record = {
+        ...parser.data,
+        id: this.primaryKey === "id" ? this.serial() : undefined,
+      } as z.infer<Schema>;
 
       const recordOffset = this.append(record);
 
@@ -83,17 +94,19 @@ export class File<TSchema extends z.ZodObject> {
     return { ok: false, status: 500 };
   }
 
-  public delete(id: number): ActionResponse<z.infer<TSchema>> {
+  public delete(
+    key: z.infer<Schema>[PrimaryKey]
+  ): ActionResponse<z.infer<Schema>> {
     try {
-      const { data: record } = this.select(id);
+      const { data } = this.select(this.primaryKey, key);
 
-      if (!record) return { ok: false, status: 404 };
+      if (!data) return { ok: false, status: 404 };
 
       for (const indexKey of Object.keys(this.indexes)) {
-        this.indexes[indexKey]!.delete(record[indexKey]);
+        this.indexes[indexKey]!.delete(data[indexKey]);
       }
 
-      return { ok: true, status: 200, data: record };
+      return { ok: true, status: 200, data };
     } catch (error) {
       console.error(error);
     }
@@ -101,29 +114,26 @@ export class File<TSchema extends z.ZodObject> {
     return { ok: false, status: 500 };
   }
 
-  public update(
-    id: number,
-    data: Omit<z.infer<TSchema>, "id">
-  ): ActionResponse<z.infer<TSchema>> {
-    const parser = this.dataSchema.safeParse({ id, ...data });
+  public update(data: z.infer<Schema>): ActionResponse<z.infer<Schema>> {
+    const parser = this.schema.safeParse(data);
 
     if (!parser.success) return { ok: false, status: 400 };
 
-    const updatedRecord = parser.data as z.infer<TSchema>;
+    const updatedRecord = parser.data as z.infer<Schema>;
 
     try {
-      const res = this.select(id);
+      const res = this.select(this.primaryKey, updatedRecord[this.primaryKey]);
 
       if (!res.ok) return res;
 
-      const oldData = res.data;
+      const oldRecord = res.data;
 
       for (const uniqueField of this.uniqueFields) {
-        if (uniqueField === "id") continue;
+        if (uniqueField === this.primaryKey) continue;
 
-        if (updatedRecord[uniqueField] === oldData[uniqueField]) continue;
+        if (updatedRecord[uniqueField] === oldRecord[uniqueField]) continue;
 
-        const dataOffset = this.indexes[String(uniqueField)]!.find(
+        const dataOffset = this.indexes[uniqueField]!.find(
           updatedRecord[uniqueField]
         );
 
@@ -147,15 +157,26 @@ export class File<TSchema extends z.ZodObject> {
     return { ok: false, status: 500 };
   }
 
-  public select(id: number): ActionResponse<z.infer<TSchema>> {
+  public select<K extends keyof z.infer<Schema>>(
+    key: K,
+    value: z.infer<Schema>[K]
+  ): ActionResponse<z.infer<Schema>> {
     try {
-      const recordOffset = this.indexes.id.find(id);
+      const index = this.indexes[key];
 
-      if (!recordOffset) return { ok: false, status: 404 };
+      if (index) {
+        const recordOffset = index.find(value);
 
-      const data = this.retrieve(recordOffset);
+        if (!recordOffset) return { ok: false, status: 404 };
 
-      return { ok: true, status: 200, data };
+        const record = this.retrieve(recordOffset);
+
+        if (!record) return { ok: false, status: 509 };
+
+        return { ok: true, status: 200, data: record };
+      }
+
+      // TODO: find manually
     } catch (error) {
       console.error(error);
     }
@@ -163,14 +184,16 @@ export class File<TSchema extends z.ZodObject> {
     return { ok: false, status: 500 };
   }
 
-  public getAll(): ActionResponse<z.infer<TSchema>[]> {
+  public getAll(): ActionResponse<z.infer<Schema>[]> {
     try {
-      const results = this.indexes.id.findRange(0, MAX_ID);
+      const results = this.indexes[this.primaryKey]!.getAll();
 
-      const records: z.infer<TSchema>[] = [];
+      const records: z.infer<Schema>[] = [];
 
       for (const { value: recordOffset } of results) {
-        records.push(this.retrieve(recordOffset));
+        const record = this.retrieve(recordOffset);
+
+        if (record) records.push(record);
       }
 
       return { ok: true, status: 200, data: records };
@@ -181,18 +204,24 @@ export class File<TSchema extends z.ZodObject> {
     return { ok: false, status: 500 };
   }
 
-  private initializeFile() {
-    const serialBuffer = Buffer.alloc(4);
-    serialBuffer.writeUint32BE(0);
+  private createFile() {
+    if (this.primaryKey === "id") {
+      const serialBuffer = Buffer.alloc(4);
+      serialBuffer.writeUint32BE(0);
 
-    fs.writeFileSync(this.dataFilePath, serialBuffer);
+      fs.writeFileSync(this.filePath, serialBuffer);
+    } else {
+      const buffer = Buffer.alloc(0);
+
+      fs.writeFileSync(this.filePath, buffer);
+    }
   }
 
   private serial(): number {
     let fd: number | undefined;
 
     try {
-      fd = fs.openSync(this.dataFilePath, "r+");
+      fd = fs.openSync(this.filePath, "r+");
 
       const serialBuffer = Buffer.alloc(4);
       fs.readSync(fd, serialBuffer, 0, serialBuffer.length, 0);
@@ -210,18 +239,24 @@ export class File<TSchema extends z.ZodObject> {
     }
   }
 
-  private append(data: z.infer<typeof this.dataSchema>) {
-    const dataBuffer = serialize(data, this.dataSchema);
+  private toBuffer(data: z.infer<typeof this.schema>) {
+    const isValidBuffer = serialize(true, z.boolean());
 
-    const dataLengthBuffer = Buffer.alloc(2);
-    dataLengthBuffer.writeUInt16BE(dataBuffer.length);
+    const dataBuffer = serialize(data, this.schema);
 
-    const buffer = Buffer.concat([dataLengthBuffer, dataBuffer]);
+    const dataLengthBuffer = Buffer.alloc(4);
+    dataLengthBuffer.writeUInt32BE(dataBuffer.length);
+
+    return Buffer.concat([isValidBuffer, dataLengthBuffer, dataBuffer]);
+  }
+
+  private append(data: z.infer<typeof this.schema>) {
+    const buffer = this.toBuffer(data);
 
     let fd: number | undefined;
 
     try {
-      fd = fs.openSync(this.dataFilePath, "a");
+      fd = fs.openSync(this.filePath, "a");
 
       // gets the size of the file
       const { size: fileSize } = fs.fstatSync(fd);
@@ -235,15 +270,20 @@ export class File<TSchema extends z.ZodObject> {
     }
   }
 
-  private retrieve(offset: number): z.infer<TSchema> {
+  private retrieve(offset: number): z.infer<Schema> | null {
     let fd: number | undefined;
 
     try {
-      fd = fs.openSync(this.dataFilePath, "r");
+      fd = fs.openSync(this.filePath, "r");
 
-      const dataLengthBuffer = Buffer.alloc(2);
-      fs.readSync(fd, dataLengthBuffer, 0, dataLengthBuffer.length, offset);
-      const dataLength = dataLengthBuffer.readUInt16BE();
+      const metaBuffer = Buffer.alloc(5);
+      fs.readSync(fd, metaBuffer, 0, metaBuffer.length, offset);
+
+      const isValid = deserialize(metaBuffer, 0, z.boolean());
+
+      if (!isValid) return null;
+
+      const dataLength = metaBuffer.readUInt32BE(1);
 
       const dataBuffer = Buffer.alloc(dataLength);
       fs.readSync(
@@ -251,13 +291,13 @@ export class File<TSchema extends z.ZodObject> {
         dataBuffer,
         0,
         dataBuffer.length,
-        offset + dataLengthBuffer.length
+        offset + metaBuffer.length
       );
 
-      const { value: data } = deserialize(dataBuffer, 0, this.dataSchema);
+      const { value: data } = deserialize(dataBuffer, 0, this.schema);
 
       // will throw an error if the `data` is invalid
-      return this.dataSchema.parse(data) as z.infer<TSchema>;
+      return this.schema.parse(data) as z.infer<Schema>;
     } finally {
       if (fd !== undefined) fs.closeSync(fd);
     }

@@ -29,10 +29,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Drawing } from "@/schemas/drawing";
+import { Product } from "@/schemas/product";
 
 import { EllipsisIcon, EyeIcon, Trash2Icon } from "lucide-react";
-
-import type { Drawing, Product } from "@/lib/schemas";
 
 export function ProductsTable() {
   const { data } = useData();

@@ -2,17 +2,6 @@ import z from "zod";
 
 import { formatNumber } from "@/lib/utils";
 
-export type State = (typeof STATES)[number];
-export const STATES = [
-  "Completo",
-  "Atrasado",
-  "Andamento",
-  "Cancelado",
-] as const;
-
-export type Unit = (typeof UNITS)[number];
-export const UNITS = ["UN", "PÇ", "PR"] as const;
-
 export type Currency = (typeof CURRENCIES)[number];
 export const CURRENCIES = ["BRL", "USD"] as const;
 
@@ -62,43 +51,26 @@ export const clientSchema = z.object({
   address: addressSchema,
 });
 
-export type Drawing = z.infer<typeof drawingSchema>;
-export const drawingSchema = z.object({
-  id: z.int32().positive(), // primary key
-  number: z.string().min(1, "Esse campo deve ser preenchido."),
-  url: z.string().optional(),
-});
+export type ClientData = z.infer<typeof clientDataSchema>;
+export const clientDataSchema = clientSchema.extend({ id: z.number() });
 
-export type Product = z.infer<typeof productSchema>;
-export const productSchema = z.object({
-  id: z.int32().positive(), // primary key
-  code: z.string().min(1, "Esse campo deve ser preenchido."),
-  description: z.string().min(1, "Esse campo deve ser preenchido."),
-  unit: z.enum([...UNITS], "Unidade de medida inválida."),
-
-  drawings: z.array(z.int32().positive()), // foreign key from Drawing
-});
-
-export type Order = z.infer<typeof orderSchema>;
-export const orderSchema = z.object({
-  id: z.int32().positive(), // primary key
-  number: z.string().min(1, "Esse campo deve ser preenchido."),
-  date: z.date("Data inválida."),
-  total: z.number(), // sum of all items price times the amount
-  state: z.enum([...STATES]),
-
-  items: z.array(z.int32().positive()), // foreign key from OrderItems
-  clientId: z.int32().positive(), // foreign key from Client
-});
-
-export type OrderItem = z.infer<typeof orderItemSchema>;
-export const orderItemSchema = z.object({
-  id: z.int32().positive(), // primary key
-  item: z.string().min(1, "Esse campo deve ser preenchido."),
-  deliver: z.date("Data inválida."),
-  price: z.number().positive("Preço inválido."),
-  amount: z.number().positive("Quantidade inválida."),
-
-  productId: z.int32().positive(), // foreign key from Product
-  orderId: z.int32().positive(), // foreign key from Order
-});
+export const DEFAULT_CLIENT: ClientData = {
+  id: 0,
+  document: "",
+  socialName: "",
+  registration: "",
+  name: "",
+  email: "",
+  cellphone: "",
+  payment: 30,
+  currency: "BRL",
+  address: {
+    street: "",
+    country: "",
+    city: "",
+    state: "",
+    number: "",
+    district: "",
+    complement: "",
+  },
+};

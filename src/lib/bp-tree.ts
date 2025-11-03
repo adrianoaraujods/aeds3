@@ -1,7 +1,12 @@
 import * as fs from "fs";
 import z from "zod";
 
-import { deserialize, serialize } from "@/lib/files";
+import { deserialize, serialize } from "@/lib/buffer";
+
+type SearchResult<TKey extends z.ZodType> = {
+  key: z.infer<TKey>;
+  value: number;
+};
 
 type Node<TKey extends z.ZodType> = {
   isLeaf: boolean;
@@ -428,12 +433,12 @@ export class BpTree<TKey extends z.ZodType> {
   public findRange(
     startKey: z.infer<TKey>,
     endKey: z.infer<TKey>
-  ): { key: z.infer<TKey>; value: number }[] {
+  ): SearchResult<TKey>[] {
     // will throw an error if the `startKey` or `endKey` are invalid
     this.keySchema.parse(startKey);
     this.keySchema.parse(endKey);
 
-    const results: ReturnType<typeof this.findRange> = [];
+    const results: SearchResult<TKey>[] = [];
 
     if (startKey > endKey) {
       throw new Error(
@@ -483,6 +488,40 @@ export class BpTree<TKey extends z.ZodType> {
 
       currentKey = currentNode.keys[pointerIndex];
       currentValue = currentNode.pointers[pointerIndex];
+    }
+
+    return results;
+  }
+
+  public getAll(): SearchResult<TKey>[] {
+    const results: SearchResult<TKey>[] = [];
+
+    // start the search from the root
+    let currentOffset = this.rootOffset;
+    let currentNode = this.deserializeNode(currentOffset);
+    let pointerIndex = 0;
+
+    // searches the leftmost leaf
+    while (!currentNode.isLeaf) {
+      // move to the leftmost node
+      currentOffset = currentNode.pointers[pointerIndex];
+      currentNode = this.deserializeNode(currentOffset);
+    }
+
+    while (true) {
+      while (pointerIndex < currentNode.keys.length) {
+        results.push({
+          key: currentNode.keys[pointerIndex],
+          value: currentNode.pointers[pointerIndex],
+        });
+
+        pointerIndex++;
+      }
+
+      if (currentNode.nextLeafOffset === 0) break;
+
+      currentNode = this.deserializeNode(currentNode.nextLeafOffset);
+      pointerIndex = 0;
     }
 
     return results;

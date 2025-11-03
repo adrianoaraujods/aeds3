@@ -5,25 +5,22 @@ import Link from "next/link";
 
 import { revalidateLogic } from "@tanstack/react-form";
 import { toast } from "sonner";
-import z from "zod";
 
 import { useAppForm } from "@/hooks/use-app-form";
 import { useData } from "@/hooks/use-data";
-import { clientSchema, CURRENCIES } from "@/lib/schemas";
 import { createClient, updateClient } from "@/actions/client";
 import { Heading } from "@/components/typography/heading";
 import { Button } from "@/components/ui/button";
+import {
+  clientDataSchema,
+  CURRENCIES,
+  CURRENCIES_LABELS,
+} from "@/schemas/client";
 
-import type { SelectOption } from "@/components/form/select-field";
-import type { Client, Currency } from "@/lib/schemas";
-
-const currencies: { [currency in Currency]: Omit<SelectOption, "value"> } = {
-  BRL: { title: "Real" },
-  USD: { title: "Dólar" },
-};
+import type { Client, ClientData, Currency } from "@/schemas/client";
 
 type ClientFormProps = {
-  initialValues: Client;
+  initialValues: ClientData;
   type: "create" | "edit";
   canEdit?: boolean;
   setCanEdit?: React.Dispatch<React.SetStateAction<boolean>>;
@@ -42,7 +39,7 @@ export function ClientForm({
   const form = useAppForm({
     defaultValues: initialValues,
     validationLogic: revalidateLogic({ modeAfterSubmission: "blur" }),
-    validators: { onDynamic: clientSchema.extend({ id: z.number() }) },
+    validators: { onDynamic: clientDataSchema },
     onSubmit: async ({ value }) => {
       if (type === "create") {
         handleCreate(value);
@@ -52,7 +49,7 @@ export function ClientForm({
     },
   });
 
-  async function handleCreate(client: Omit<Client, "id">) {
+  async function handleCreate(client: ClientData) {
     const res = await createClient(client);
 
     if (res.ok) {
@@ -244,9 +241,9 @@ export function ClientForm({
             <field.SelectField
               label="Moeda"
               defaultValue={CURRENCIES[0]}
-              options={Object.keys(currencies).map((currency) => ({
+              options={Object.keys(CURRENCIES_LABELS).map((currency) => ({
                 value: currency,
-                title: currencies[currency as Currency].title,
+                title: CURRENCIES_LABELS[currency as Currency],
               }))}
               triggerProps={{ disabled: canEdit === false }}
             />

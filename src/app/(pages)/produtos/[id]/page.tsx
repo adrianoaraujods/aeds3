@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 
 import { LockOpenIcon } from "lucide-react";
 
-import type { FormProduct } from "@/components/form/product-form";
+import type { ProductData } from "@/schemas/product";
 
 export default function ProductPage({
   params,
@@ -33,14 +33,14 @@ export default function ProductPage({
   const id = Number(React.use(params).id);
 
   const [isLoading, setIsLoading] = React.useState(true);
-  const [product, setProject] = React.useState<FormProduct | null>(null);
+  const [product, setProject] = React.useState<ProductData | null>(null);
   const [canEdit, setCanEdit] = React.useState(false);
 
   React.useEffect(() => {
     getProduct(id).then(async (res) => {
       if (res.ok) {
         const drawingsIds = res.data.drawings;
-        const product: FormProduct = { ...res.data, drawings: [] };
+        const product: ProductData = { ...res.data, drawings: [] };
 
         for (const drawingId of drawingsIds) {
           const res = await getDrawing(drawingId);
@@ -51,7 +51,7 @@ export default function ProductPage({
         }
 
         if (product.drawings.length !== drawingsIds.length) {
-          toast.warning("Falha ao carregar algum desenhos!");
+          toast.warning("Erro ao carregar algum desenho!");
         }
 
         setProject(product);

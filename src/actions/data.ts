@@ -4,7 +4,10 @@ import { getAllOrders } from "@/actions/order";
 import { getAllProducts } from "@/actions/product";
 
 import type { ActionResponse } from "@/lib/config";
-import type { Client, Drawing, Order, Product } from "@/lib/schemas";
+import type { Client } from "@/schemas/client";
+import type { Drawing } from "@/schemas/drawing";
+import type { Order } from "@/schemas/order";
+import type { Product } from "@/schemas/product";
 
 type Data = {
   clients: Client[];

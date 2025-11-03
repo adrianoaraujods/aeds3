@@ -40,4 +40,7 @@ next-env.d.ts
 
 # local data files
 /data/**
-!/data/.gitkeep
+!/data/indexes/
+!/data/indexes/.gitkeep
+!/data/backups/
+!/data/backups/.gitkeep
