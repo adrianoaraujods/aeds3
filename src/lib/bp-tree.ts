@@ -83,9 +83,10 @@ export class BpTree<TKey extends z.ZodType> {
       pointerIndex = this.findIndex(currentNode.keys, key);
     }
 
-    if (pointerIndex > 0 && currentNode.keys[pointerIndex - 1] === key) {
-      throw new Error(`Error: inserting duplicate key: \`${key}\``);
-    }
+    // TODO: avaliate duplicate keys
+    // if (pointerIndex > 0 && currentNode.keys[pointerIndex - 1] === key) {
+    //   throw new Error(`Error: inserting duplicate key: \`${key}\``);
+    // }
 
     let currentKey = key;
     let currentPointer = value;
@@ -207,6 +208,12 @@ export class BpTree<TKey extends z.ZodType> {
     // removes the `key` and its value from the leaf
     currentNode.keys.splice(pointerIndex, 1);
     currentNode.pointers.splice(pointerIndex, 1);
+
+    // check if the only node its the root
+    if (offsetsPath.length === 0) {
+      this.overwriteNode(currentNode, currentOffset);
+      return true;
+    }
 
     while (offsetsPath.length > 0) {
       // check if the current node has at least the minimum amount of keys

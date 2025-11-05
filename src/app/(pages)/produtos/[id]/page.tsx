@@ -6,8 +6,7 @@ import { notFound } from "next/navigation";
 
 import { toast } from "sonner";
 
-import { getDrawing } from "@/actions/drawing";
-import { getProduct } from "@/actions/product";
+import { getProductData } from "@/actions/product";
 import { ProductForm } from "@/components/form/product-form";
 import { Heading } from "@/components/typography/heading";
 import { Text } from "@/components/typography/text";
@@ -37,24 +36,9 @@ export default function ProductPage({
   const [canEdit, setCanEdit] = React.useState(false);
 
   React.useEffect(() => {
-    getProduct(id).then(async (res) => {
+    getProductData(id).then(async (res) => {
       if (res.ok) {
-        const drawingsIds = res.data.drawings;
-        const product: ProductData = { ...res.data, drawings: [] };
-
-        for (const drawingId of drawingsIds) {
-          const res = await getDrawing(drawingId);
-
-          if (!res.ok) continue;
-
-          product.drawings.push(res.data);
-        }
-
-        if (product.drawings.length !== drawingsIds.length) {
-          toast.warning("Erro ao carregar algum desenho!");
-        }
-
-        setProject(product);
+        setProject(res.data);
       } else {
         switch (res.status) {
           case 404:

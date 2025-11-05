@@ -9,18 +9,19 @@ import type { Drawing } from "@/schemas/drawing";
 const file = new File({
   name: "drawings",
   schema: drawingSchema,
-  primaryKey: "id",
-  uniqueFields: ["number"],
+  primaryKey: "number",
 });
 
 export async function createDrawing(
-  data: Omit<Drawing, "id">
+  data: Drawing
 ): Promise<ActionResponse<Drawing>> {
   return file.insert(data);
 }
 
-export async function getDrawing(id: number): Promise<ActionResponse<Drawing>> {
-  return file.select("id", id);
+export async function getDrawing(
+  number: Drawing["number"]
+): Promise<ActionResponse<Drawing>> {
+  return file.findBy("number", number);
 }
 
 export async function getAllDrawings(): Promise<ActionResponse<Drawing[]>> {
@@ -34,7 +35,7 @@ export async function updateDrawing(
 }
 
 export async function deleteDrawing(
-  id: number
+  number: Drawing["number"]
 ): Promise<ActionResponse<Drawing>> {
-  return file.delete(id);
+  return file.delete(number);
 }

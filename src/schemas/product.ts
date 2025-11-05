@@ -1,6 +1,6 @@
 import z from "zod";
 
-import { drawingSchema } from "./drawing";
+import { drawingDataSchema } from "@/schemas/drawing";
 
 export type Unit = (typeof UNITS)[number];
 export const UNITS = ["UN", "PÇ", "PR"] as const;
@@ -11,14 +11,12 @@ export const productSchema = z.object({
   code: z.string().min(1, "Esse campo deve ser preenchido."),
   description: z.string().min(1, "Esse campo deve ser preenchido."),
   unit: z.enum([...UNITS], "Unidade de medida inválida."),
-
-  drawings: z.array(drawingSchema.shape.id), // foreign key from Drawing
 });
 
 export type ProductData = z.infer<typeof productDataSchema>;
 export const productDataSchema = productSchema.extend({
   id: z.number(),
-  drawings: z.array(drawingSchema.extend({ id: z.number() })),
+  drawings: z.array(drawingDataSchema),
 });
 
 export const DEFAULT_PRODUCT: ProductData = {

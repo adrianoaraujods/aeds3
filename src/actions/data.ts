@@ -7,18 +7,18 @@ import type { ActionResponse } from "@/lib/config";
 import type { Client } from "@/schemas/client";
 import type { Drawing } from "@/schemas/drawing";
 import type { Order } from "@/schemas/order";
-import type { Product } from "@/schemas/product";
+import type { ProductData } from "@/schemas/product";
 
 type Data = {
   clients: Client[];
   drawings: Drawing[];
-  products: Product[];
+  products: ProductData[];
   // quotes: Quote[];
   orders: Order[];
   // invoices: Invoice[];
 };
 
-async function loadData(): Promise<ActionResponse<Data> & { data: Data }> {
+async function loadData(): Promise<ActionResponse<Data, Data>> {
   let serverError = false; // 500
 
   const { clients, drawings, products, orders } = await Promise.allSettled([

@@ -20,7 +20,7 @@ export async function createClient(
 }
 
 export async function getClient(id: number): Promise<ActionResponse<Client>> {
-  return file.select("id", id);
+  return file.findBy("id", id);
 }
 
 export async function getAllClients(): Promise<ActionResponse<Client[]>> {

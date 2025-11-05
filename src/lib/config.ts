@@ -16,34 +16,25 @@ type Navigation = {
   items: NavigationLink[];
 }[];
 
-type SuccessCode = 200 | 201 | 204 | 209;
-type ErrorCode = 400 | 404 | 409 | 500 | 509;
-type ResponseCode = SuccessCode | ErrorCode;
+export type SuccessCode = 200 | 201 | 204 | 209;
+export type ErrorCode = 400 | 404 | 409 | 500 | 509;
 
-type Response<TData> = {
-  ok: boolean;
-  status?: ResponseCode;
-  data?: TData;
-  message?: string;
-};
-
-interface SuccessResponse<TData> extends Response<TData> {
+type SuccessResponse<TData> = {
   ok: true;
   status?: SuccessCode;
   data: TData;
   message?: string;
-}
+};
 
-interface ErrorResponse<TData> extends Response<TData> {
+type ErrorResponse<TData = void> = {
   ok: false;
   status: ErrorCode;
-  data?: TData;
   message?: string;
-}
+} & (TData extends void ? { data?: never } : { data: TData });
 
-type ActionResponse<TData = void> =
-  | SuccessResponse<TData>
-  | ErrorResponse<TData>;
+type ActionResponse<TSuccess = void, TError = void> =
+  | SuccessResponse<TSuccess>
+  | ErrorResponse<TError>;
 
 const NAVIGATION: Navigation = [
   {

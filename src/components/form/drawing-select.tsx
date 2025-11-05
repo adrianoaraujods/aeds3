@@ -51,7 +51,7 @@ export function DrawingSelect({
           className={cn("w-[200px] justify-between", className)}
           {...props}
         >
-          {drawing.id === 0 ? "Novo desenho" : drawing.number}
+          {drawing.isNew ? "Novo desenho" : drawing.number}
 
           <ChevronsUpDownIcon className="opacity-50" />
         </Button>
@@ -77,24 +77,26 @@ export function DrawingSelect({
                 <CheckIcon
                   className={cn(
                     "ml-auto",
-                    drawing.id === 0 ? "opacity-100" : "opacity-0"
+                    drawing.isNew ? "opacity-100" : "opacity-0"
                   )}
                 />
               </CommandItem>
 
-              {drawings.map(({ id, number }) => (
+              {drawings.map(({ number }) => (
                 <CommandItem
-                  key={id}
+                  key={number}
                   value={number}
                   onSelect={async () => {
-                    const res = await getDrawing(id);
+                    const res = await getDrawing(number);
+
+                    console.log(res);
 
                     if (!res.ok) {
                       toast.error("Houve algum erro ao carregar o desenho.");
                       return;
                     }
 
-                    setDrawing(res.data);
+                    setDrawing({ ...res.data, isNew: false });
                     setIsOpen(false);
                   }}
                 >
@@ -103,7 +105,7 @@ export function DrawingSelect({
                   <CheckIcon
                     className={cn(
                       "ml-auto",
-                      id === drawing.id ? "opacity-100" : "opacity-0"
+                      drawing.number ? "opacity-100" : "opacity-0"
                     )}
                   />
                 </CommandItem>

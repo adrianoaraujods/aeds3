@@ -13,7 +13,7 @@ function DataProvider({
   initialData,
   children,
 }: {
-  initialData: Promise<ActionResponse<Data> & { data: Data }>;
+  initialData: Promise<ActionResponse<Data, Data>>;
   children: React.ReactNode;
 }) {
   const res = React.use(initialData);

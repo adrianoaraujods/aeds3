@@ -8,7 +8,6 @@ import { toast } from "sonner";
 
 import { useAppForm } from "@/hooks/use-app-form";
 import { useData } from "@/hooks/use-data";
-import { createDrawing, getDrawing, updateDrawing } from "@/actions/drawing";
 import { createProduct, updateProduct } from "@/actions/product";
 import { DrawingSelect } from "@/components/form/drawing-select";
 import { Heading } from "@/components/typography/heading";
@@ -19,8 +18,8 @@ import { productDataSchema, UNITS } from "@/schemas/product";
 
 import { PlusIcon, XIcon } from "lucide-react";
 
-import type { Drawing, DrawingData } from "@/schemas/drawing";
-import type { Product, ProductData } from "@/schemas/product";
+import type { DrawingData } from "@/schemas/drawing";
+import type { ProductData } from "@/schemas/product";
 
 type ProductFormProps = {
   initialValues: ProductData;
@@ -41,11 +40,9 @@ export function ProductForm({
 
   const form = useAppForm({
     defaultValues: initialValues,
-    validationLogic: revalidateLogic({ modeAfterSubmission: "blur" }),
+    validationLogic: revalidateLogic({ mode: "blur" }),
     validators: { onDynamic: productDataSchema },
     onSubmit: async ({ value }) => {
-      const drawingsIds: Drawing["id"][] = [];
-
       const uniqueDrawings = [
         ...new Set(value.drawings.map(({ number }) => number)),
       ];
@@ -55,123 +52,72 @@ export function ProductForm({
         return;
       }
 
-      for (let i = 0; i < value.drawings.length; i++) {
-        const drawing = value.drawings[i];
-
-        if (drawing.id === 0) {
-          const res = await createDrawing(drawing);
-
-          if (!res.ok) {
-            switch (res.status) {
-              case 409:
-                toast.error(
-                  `Já existe um desenho com esse número: '${drawing.number}'`
-                );
-                break;
-              default:
-                toast.error(
-                  `Houve algum problem ao salvar o desenho: '${drawing.number}'`
-                );
-            }
-
-            return;
-          }
-
-          drawingsIds.push(res.data.id);
-
-          setData((prev) => ({
-            ...prev,
-            drawings: [...prev.drawings, res.data],
-          }));
-
-          form.fieldInfo.drawings.instance!.replaceValue(i, res.data);
-        } else {
-          const res = await getDrawing(drawing.id);
-
-          if (!res.ok) {
-            toast.error(
-              `Houve algum problem ao atualizar o desenho: '${drawing.number}'`
-            );
-            return;
-          }
-
-          if (
-            drawing.number !== res.data.number ||
-            drawing.url !== res.data.url
-          ) {
-            const res = await updateDrawing(drawing);
-
-            if (!res.ok) {
-              toast.error(
-                `Houve algum problem ao atualizar o desenho: '${drawing.number}'`
-              );
-              return;
-            }
-
-            setData((prev) => {
-              const drawings = [...prev.drawings];
-
-              for (let i = 0; i < drawings.length; i++) {
-                if (drawings[i].id === res.data.id) {
-                  drawings[i] = res.data;
-                  break;
-                }
-              }
-
-              return { ...prev, drawings };
-            });
-
-            form.fieldInfo.drawings.instance!.replaceValue(i, res.data);
-          }
-
-          drawingsIds.push(res.data.id);
-        }
-      }
-
-      const product: Product = {
-        ...value,
-        drawings: drawingsIds,
-      };
-
       if (type === "create") {
-        handleCreate(product);
-        form.reset();
+        handleCreate(value);
       } else {
-        handleEdit(product);
+        handleEdit(value);
       }
 
       setSelectedDrawing(DEAFULT_DRAWING);
     },
   });
 
-  async function handleCreate(product: Omit<Product, "id">) {
-    const res = await createProduct(product);
+  async function handleCreate(product: ProductData) {
+    const creatingProduct = await createProduct(product);
 
-    if (res.ok) {
-      setData((prev) => ({
-        ...prev,
-        products: [...prev.products, res.data],
-      }));
+    if (creatingProduct.ok) {
+      const createdProduct = creatingProduct.data;
+
+      setData((prev) => {
+        const products = [...prev.products, createdProduct];
+        const drawings = [...prev.drawings];
+
+        for (const drawing of createdProduct.drawings) {
+          if (!drawing.isNew) continue;
+
+          drawings.push(drawing);
+        }
+
+        return { ...prev, products, drawings };
+      });
 
       toast.success("Produto criado com sucesso!", {
         action: (
           <Button className="ml-auto" variant="outline" asChild>
-            <Link href={`/produtos/${res.data.id}`}>Abrir</Link>
+            <Link href={`/produtos/${createdProduct.id}`}>Abrir</Link>
           </Button>
         ),
       });
 
+      form.reset();
+
       return;
     }
 
-    switch (res.status) {
+    const createdDrawings = creatingProduct.data;
+
+    for (let i = 0, j = 0; i < createdDrawings.length; i++) {
+      while (!product.drawings[j].isNew) j++;
+
+      form.fieldInfo.drawings.instance!.replaceValue(j, {
+        ...createdDrawings[i],
+        isNew: false,
+      });
+    }
+
+    setData((prev) => ({
+      ...prev,
+      drawings: [...prev.drawings, ...createdDrawings],
+    }));
+
+    switch (creatingProduct.status) {
       case 400:
         toast.warning(
           "Não foi possível salvar o produto. Confira os dados do produto."
         );
         break;
       case 409:
-        toast.warning("Esse produto já existe.");
+        toast.warning("Verifique os desenhos, algum deles já existe.");
         break;
       default:
         toast.error(
@@ -181,33 +127,42 @@ export function ProductForm({
     }
   }
 
-  async function handleEdit(product: Product) {
-    const res = await updateProduct(product);
+  async function handleEdit(product: ProductData) {
+    const updatingProduct = await updateProduct(product);
 
-    if (res.ok) {
+    if (updatingProduct.ok) {
+      const updatedProduct = updatingProduct.data;
+
       setData((prev) => {
         const products = [...prev.products];
 
         for (let i = 0; i < products.length; i++) {
-          if (products[i].id === res.data.id) {
-            products[i] = res.data;
+          if (products[i].id === updatedProduct.id) {
+            products[i] = updatedProduct;
             break;
+          }
+        }
+
+        const drawings = [...prev.drawings];
+
+        for (const drawing of updatedProduct.drawings) {
+          if (drawing.isNew) {
+            drawings.push(drawing);
+            form.pushFieldValue("drawings", drawing);
           }
         }
 
         return { ...prev, products };
       });
 
-      if (setCanEdit) {
-        setCanEdit(false);
-      }
+      if (setCanEdit) setCanEdit(false);
 
       toast.success("Produto modificado com sucesso!");
 
       return;
     }
 
-    switch (res.status) {
+    switch (updatingProduct.status) {
       case 400:
         toast.warning(
           "Não foi possível salvar o produto. Confira os dados do produto."
@@ -312,7 +267,7 @@ export function ProductForm({
                   </header>
 
                   <ul className="flex flex-col gap-2">
-                    {field.state.value.map((_, i) => (
+                    {field.state.value.map(({ isNew }, i) => (
                       <li
                         className="grid grid-cols-[1fr_1fr_36px] gap-2"
                         key={i}
@@ -320,14 +275,18 @@ export function ProductForm({
                         <form.AppField
                           name={`drawings[${i}].number`}
                           children={(subfield) => (
-                            <subfield.TextField disabled={canEdit === false} />
+                            <subfield.TextField
+                              disabled={!isNew || canEdit === false}
+                            />
                           )}
                         />
 
                         <form.AppField
                           name={`drawings[${i}].url`}
                           children={(subfield) => (
-                            <subfield.TextField disabled={canEdit === false} />
+                            <subfield.TextField
+                              disabled={!isNew || canEdit === false}
+                            />
                           )}
                         />
 

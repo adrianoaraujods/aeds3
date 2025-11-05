@@ -29,15 +29,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Drawing } from "@/schemas/drawing";
-import { Product } from "@/schemas/product";
 
 import { EllipsisIcon, EyeIcon, Trash2Icon } from "lucide-react";
+
+import type { ProductData } from "@/schemas/product";
 
 export function ProductsTable() {
   const { data } = useData();
 
-  const table = useReactTable<Product>({
+  const table = useReactTable<ProductData>({
     columns: [
       { accessorKey: "code", header: "Código" },
       { accessorKey: "description", header: "Descrição" },
@@ -45,9 +45,26 @@ export function ProductsTable() {
       {
         accessorKey: "drawings",
         header: "Desenhos",
-        cell: ({ row }) => (
-          <ProductTableDrawingsCell drawingsIds={row.original.drawings} />
-        ),
+        cell: ({ row }) => {
+          const drawings = row.original.drawings;
+
+          return (
+            <span>
+              {drawings.map(({ number, url }, i) => (
+                <React.Fragment key={number}>
+                  {!url ? (
+                    number
+                  ) : (
+                    <Link href={url} target="_blank">
+                      {number}
+                    </Link>
+                  )}
+                  {i < drawings.length - 1 && ", "}
+                </React.Fragment>
+              ))}
+            </span>
+          );
+        },
       },
       {
         accessorKey: "more",
@@ -62,7 +79,7 @@ export function ProductsTable() {
   return <DataTable table={table} />;
 }
 
-function ProductTableRowMenu({ product }: { product: Product }) {
+function ProductTableRowMenu({ product }: { product: ProductData }) {
   const { setData } = useData();
 
   async function handleDelete() {
@@ -143,52 +160,5 @@ function ProductTableRowMenu({ product }: { product: Product }) {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  );
-}
-
-function ProductTableDrawingsCell({
-  drawingsIds,
-}: {
-  drawingsIds: Drawing["id"][];
-}) {
-  const { data } = useData();
-
-  const drawings = React.useMemo(() => {
-    const targets = new Set(drawingsIds);
-    const drawings: Drawing[] = [];
-
-    for (const drawing of data.drawings) {
-      if (targets.has(drawing.id)) {
-        drawings.push(drawing);
-        targets.delete(drawing.id);
-
-        if (targets.size === 0) break;
-      }
-    }
-
-    if (targets.size !== 0) {
-      toast.warning(
-        `Falha ao carregar os desenhos com ids: ${[...targets].join(", ")}`
-      );
-    }
-
-    return drawings;
-  }, [data, drawingsIds]);
-
-  return (
-    <span>
-      {drawings.map(({ id, number, url }, i) => (
-        <React.Fragment key={id}>
-          {!url ? (
-            number
-          ) : (
-            <Link href={url} target="_blank">
-              {number}
-            </Link>
-          )}
-          {i < drawings.length - 1 && ", "}
-        </React.Fragment>
-      ))}
-    </span>
   );
 }

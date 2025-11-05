@@ -98,15 +98,19 @@ export class File<
     key: z.infer<Schema>[PrimaryKey]
   ): ActionResponse<z.infer<Schema>> {
     try {
-      const { data } = this.select(this.primaryKey, key);
+      const recordOffset = this.indexes[this.primaryKey]!.find(key);
+      if (!recordOffset) return { ok: false, status: 404 };
 
-      if (!data) return { ok: false, status: 404 };
+      const record = this.retrieve(recordOffset);
+      if (!record) return { ok: false, status: 404 };
+
+      this.invalidate(recordOffset);
 
       for (const indexKey of Object.keys(this.indexes)) {
-        this.indexes[indexKey]!.delete(data[indexKey]);
+        this.indexes[indexKey]!.delete(record[indexKey]);
       }
 
-      return { ok: true, status: 200, data };
+      return { ok: true, status: 200, data: record };
     } catch (error) {
       console.error(error);
     }
@@ -122,7 +126,7 @@ export class File<
     const updatedRecord = parser.data as z.infer<Schema>;
 
     try {
-      const res = this.select(this.primaryKey, updatedRecord[this.primaryKey]);
+      const res = this.findBy(this.primaryKey, updatedRecord[this.primaryKey]);
 
       if (!res.ok) return res;
 
@@ -157,7 +161,7 @@ export class File<
     return { ok: false, status: 500 };
   }
 
-  public select<K extends keyof z.infer<Schema>>(
+  public findBy<K extends keyof z.infer<Schema>>(
     key: K,
     value: z.infer<Schema>[K]
   ): ActionResponse<z.infer<Schema>> {
@@ -167,13 +171,42 @@ export class File<
       if (index) {
         const recordOffset = index.find(value);
 
-        if (!recordOffset) return { ok: false, status: 404 };
+        if (recordOffset === null) return { ok: false, status: 404 };
 
         const record = this.retrieve(recordOffset);
 
         if (!record) return { ok: false, status: 509 };
 
         return { ok: true, status: 200, data: record };
+      }
+
+      // TODO: find manually
+    } catch (error) {
+      console.error(error);
+    }
+
+    return { ok: false, status: 500 };
+  }
+
+  public select<K extends keyof z.infer<Schema>>(
+    key: K,
+    value: z.infer<Schema>[K]
+  ): ActionResponse<z.infer<Schema>[]> {
+    try {
+      const index = this.indexes[key];
+
+      if (index) {
+        const results = index.findRange(value, value);
+
+        const records: z.infer<Schema>[] = [];
+
+        for (const result of results) {
+          const record = this.retrieve(result.value);
+
+          if (record) records.push(record);
+        }
+
+        return { ok: true, status: 200, data: records };
       }
 
       // TODO: find manually
@@ -298,6 +331,20 @@ export class File<
 
       // will throw an error if the `data` is invalid
       return this.schema.parse(data) as z.infer<Schema>;
+    } finally {
+      if (fd !== undefined) fs.closeSync(fd);
+    }
+  }
+
+  private invalidate(offset: number) {
+    let fd: number | undefined;
+
+    try {
+      fd = fs.openSync(this.filePath, "r+");
+
+      const isValidBuffer = serialize(false, z.boolean());
+
+      fs.writeSync(fd, isValidBuffer, 0, isValidBuffer.length, offset);
     } finally {
       if (fd !== undefined) fs.closeSync(fd);
     }
