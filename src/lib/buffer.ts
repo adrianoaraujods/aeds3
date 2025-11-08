@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Recursively serializes a JavaScript object into a binary Buffer based on its Zod schema.
+ * Recursively serializes a value into a binary Buffer based on its Zod schema.
  *
  * @param {z.ZodType} schema The Zod schema for the value to serialize.
  * @param {any} value The value to serialize.
@@ -38,13 +38,27 @@ export function serialize(value: any, schema: z.ZodType): Buffer {
       return bigintBuffer;
 
     case "date":
-      const dateBuffer = Buffer.alloc(4);
-      dateBuffer.writeInt32BE(value ? new Date(value).getTime() : 0);
+      const dateBuffer = Buffer.alloc(8);
+      dateBuffer.writeBigUInt64BE(
+        BigInt(value ? new Date(value).getTime() : 0)
+      );
       return dateBuffer;
 
     case "string":
       const stringValue = value ? String(value) : "";
-      const stringBuffer = Buffer.from(stringValue, "utf-8");
+
+      const { maxLength } = schema as z.ZodString;
+
+      let stringBuffer: Buffer<ArrayBuffer>;
+
+      if (maxLength) {
+        stringBuffer = Buffer.alloc(maxLength);
+        stringBuffer.write(stringValue, "utf-8");
+
+        return stringBuffer;
+      }
+
+      stringBuffer = Buffer.from(stringValue, "utf-8");
 
       const stringLengthBuffer = Buffer.alloc(2);
       stringLengthBuffer.writeUInt16BE(stringBuffer.length);
@@ -101,7 +115,7 @@ export function serialize(value: any, schema: z.ZodType): Buffer {
 }
 
 /**
- * Recursively deserializes a binary Buffer into a JavaScript object based on its Zod schema.
+ * Recursively deserializes a binary Buffer into a the shape of its Zod schema.
  *
  * @param {Buffer} buffer The buffer to deserialize from.
  * @param {number} offset The current offset in the buffer.
@@ -142,14 +156,22 @@ export function deserialize(
       break;
 
     case "date":
-      const date = buffer.readInt32BE(offset);
+      const date = Number(buffer.readBigUInt64BE(offset));
       if (date !== 0) value = new Date(date);
       bytesRead = 4;
       break;
 
     case "string":
-      const stringLength = buffer.readUInt16BE(offset);
-      bytesRead = 2;
+      const { maxLength } = schema as z.ZodString;
+
+      let stringLength: number;
+
+      if (maxLength) {
+        stringLength = maxLength;
+      } else {
+        stringLength = buffer.readUInt16BE(offset);
+        bytesRead = 2;
+      }
 
       const string = buffer.toString(
         "utf-8",
