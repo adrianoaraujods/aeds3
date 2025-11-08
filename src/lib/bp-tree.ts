@@ -20,16 +20,15 @@ const MAX_KEYS = ORDER - 1;
 const MIN_KEYS = Math.ceil(ORDER / 2) - 1;
 
 export class BpTree<TKey extends z.ZodType> {
-  private readonly keySchema;
   private readonly nodeSchema;
-  private readonly filePath;
 
   /** will be initialized in {@link initializeFile} or {@link loadRootOffset} */
   private rootOffset: number = 0;
 
-  constructor(filePath: string, keySchema: TKey) {
-    this.filePath = filePath;
-    this.keySchema = keySchema;
+  constructor(
+    private filePath: string,
+    private keySchema: TKey
+  ) {
     this.nodeSchema = z.object({
       isLeaf: z.boolean(),
       keys: z.array(keySchema),
@@ -46,12 +45,6 @@ export class BpTree<TKey extends z.ZodType> {
 
   // TODO: fix bug when not inserting keys in order, breaks leafs linkage
 
-  /**
-   *
-   * @param key
-   * @param value
-   * @returns
-   */
   public insert(key: z.infer<TKey>, value: number) {
     // will throw an error if the `key` is invalid
     this.keySchema.parse(key);

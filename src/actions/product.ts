@@ -2,18 +2,16 @@
 
 import { createDrawing, deleteDrawing } from "@/actions/drawing";
 import { File } from "@/actions/file";
+import {
+  createProductDrawing,
+  getProductDrawings,
+  removeAllProductDrawings,
+} from "@/actions/product-drawing";
 import { Drawing } from "@/schemas/drawing";
 import { productDataSchema, productSchema } from "@/schemas/product";
 
 import type { ActionResponse, ErrorCode } from "@/lib/config";
 import type { Product, ProductData } from "@/schemas/product";
-
-import {
-  createProductDrawing,
-  getProductDrawings,
-  removeAllProductDrawings,
-  removeProductDrawing,
-} from "./product-drawing";
 
 const file = new File({
   name: "products",

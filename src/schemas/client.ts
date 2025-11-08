@@ -23,7 +23,7 @@ export const addressSchema = z.object({
 
 export type Client = z.infer<typeof clientSchema>;
 export const clientSchema = z.object({
-  id: z.int32().positive(), // primary key
+  id: z.uint32(), // primary key
   document: z // CNPJ | CPF
     .string()
     .min(11, "Esse campo deve ter pelo menos 11 dígitos.")
@@ -42,7 +42,7 @@ export const clientSchema = z.object({
     .min(10, "Um telefone deve ter pelo menos 10 dígitos.")
     .transform((string) => formatNumber(string)),
   payment: z
-    .number("Esse campo deve ser preenchido.")
+    .int("Esse campo deve ser preenchido.")
     .min(0, "A condição de pagamento não pode ser menor que zero.")
     .max(255, {
       error: "A condição de pagamento não pode ser maior que 255 dias.",
@@ -52,7 +52,7 @@ export const clientSchema = z.object({
 });
 
 export type ClientData = z.infer<typeof clientDataSchema>;
-export const clientDataSchema = clientSchema.extend({ id: z.number() });
+export const clientDataSchema = clientSchema.extend({ id: z.int32() });
 
 export const DEFAULT_CLIENT: ClientData = {
   id: 0,

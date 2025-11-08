@@ -45,7 +45,7 @@ export class File<
 
     for (const key of indexedKeys) {
       const tree = new BpTree(
-        `./data/indexes/${name}.${String(key)}.idx`,
+        `./data/indexes/${name}.${String(key)}.bpt`,
         this.schema.shape[String(key)]
       );
 
