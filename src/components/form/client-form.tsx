@@ -257,7 +257,7 @@ export function ClientForm({
         </Heading>
 
         <div className="xl: grid gap-x-4 gap-y-1">
-          <div className="grid gap-x-4 gap-y-1 lg:grid-cols-3">
+          <div className="grid items-start gap-x-4 gap-y-1 lg:grid-cols-3">
             <form.AppField
               name="address.country"
               children={(field) => (
@@ -292,7 +292,7 @@ export function ClientForm({
             />
           </div>
 
-          <div className="grid gap-x-4 gap-y-1 lg:grid-cols-4">
+          <div className="grid items-start gap-x-4 gap-y-1 lg:grid-cols-4">
             <form.AppField
               name="address.district"
               children={(field) => (
