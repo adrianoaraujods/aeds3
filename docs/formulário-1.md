@@ -2,16 +2,16 @@
 
 ## a) Qual a estrutura usada para representar os registros?
 
-As definições das estruturas dos registros podem ser encontradas no arquivo: [schemas.ts](/src/lib/schemas.ts). Cada registro é serializado de acordo com essa definição, e esse processo ocorre no arquivo: [files.ts](/src/lib/files.ts).
+As definições das estruturas dos registros podem ser encontradas na pasta: [/src/schemas/](/src/schemas/). Cada registro é serializado de acordo com essa definição, e esse processo ocorre no arquivo: [buffer.ts](/src/lib/buffer.ts).
 
 Cada tipo de dado é representado da seguinte forma:
 
-- **`string`:** Dois bytes são utilizados para indicar o tamanho da string, e depois cada caractere é guardado em 1 byte utilizando o _charset_ UTF-8.
+- **`string`:** Dois bytes são utilizados para indicar o tamanho da string, e depois cada caractere é guardado em 1 byte utilizando o _charset_ UTF-8. Se a string tiver um tamanho máximo definido, ela não irá salvar seu tamanho e irá alocar os bytes igual o máximo.
 - **`boolean`:** Um byte salva `T` para `true` e `F` para `false` utilizando o _charset_ UTF-8.
 - **`int`:** São utilizados 4 bytes para salvar cada número, aceitando números positivos e negativos.
 - **`number`:** São utilizados 4 bytes para salvar cada número, aceitando números positivos e negativos. Para permitir números fracionários, todo número é salvo como seu produto por 100, o que permite uma precisão de duas casas decimais.
 - **`bigint`:** São utilizados 8 bytes para salvar cada número, aceitando números positivos e negativos.
-- **`date`:** São convertidas para milissegundos seguindo o padrão Epoch Time e guardados em 4 bytes.
+- **`date`:** São convertidas para milissegundos seguindo o padrão Epoch Time e guardados em 8 bytes.
 - **`array`:** Dois bytes são utilizados para indicar quantos elementos, e depois cada dado é serializado de acordo com o seu tipo.
 - **`object`:** São serializado seguindo a ordem de definição e cada valor do objeto é serializado de forma recursiva.
 - **`enum`:** Um byte é utilizado para indicar qual índice utilizado para recuperar o valor de acordo com a ordem de definição.
@@ -20,7 +20,7 @@ Cada tipo de dado é representado da seguinte forma:
 
 ## b) Como atributos multivalorados do tipo string foram tratados?
 
-Todos os atributos multivalorados foram tratados da mesma forma. As _strings_ em específico são tratadas da seguinte forma:
+Todos os atributos multivalorados (_arrays_) foram tratados da mesma forma. As _strings_ em específico são tratadas da seguinte forma:
 
 - 2 bytes para guardar a quantidade de _strings_.
 - Para cada _string_:
@@ -29,9 +29,9 @@ Todos os atributos multivalorados foram tratados da mesma forma. As _strings_ em
 
 ## c) Como foi implementada a exclusão lógica?
 
-Todos os registros estão indexados pelo menos pela chave primária, então se eles não puderem ser encontrados no índice, quer dizer que esse valor já não é mais válido.
+O primeiro byte de cada registro é salvo como um valor booleano seguindo o padrão estipulado no arquivo: [buffer.ts](/src/lib/buffer.ts). Esse byte representa se o registro está válido (`T`) ou não (`F`).
 
-Todas as chaves primárias são um identificador único incremental partindo de 1. Isso foi feito para facilitar a manter integridade referencial, porque em alguns casos será possível alterar o campo que normalmente seria a chave primária.
+Quando um arquivo é marcado como inválido, suas chaves são excluídas de todos os índices.
 
 ## d) Além das PKs, quais outras chaves foram utilizadas nesta etapa?
 
@@ -49,7 +49,9 @@ A implementação dos relacionamentos 1:N consistem em uma propriedade no objeto
 
 Deste modo, para acessar os registros do lado N, basta utilizar o índice da chave primária para encontrar cada um.
 
-Normalmente não é permitido a exclusão de um registro que está sendo referenciado, o único caso que isso é permitido é quando um item de pedido é removido. Neste caso, é utilizado a propriedade `orderId` para atualizar os itens do pedido fazendo o uso do índice da chave primária de pedidos.
+Normalmente não é permitido a exclusão de um registro que está sendo referenciado, o único caso que isso é permitido é quando um item de pedido é removido. Neste caso, é utilizado a propriedade `orderNumber` para atualizar os itens do pedido fazendo o uso do índice da chave primária de pedidos.
+
+Um exemplo do caso que não é permitido, é ao tentar excluir um produto que está presente em algum item de pedido. Neste caso, o sistema irá mostrar um erro indicando que essa operação não é permitida. Para isso, é verificado na tabela `order-item` pelo campo `productId`, caso retorne algum valor, então quer dizer que existe algum pedido com esse produto.
 
 ## g) Como os índices são persistidos em disco? (formato, atualização, sincronização com os dados).
 
