@@ -708,7 +708,7 @@ export class BpTree<TKey extends z.ZodType> {
 
     while (low <= high) {
       const mid = Math.floor((low + high) / 2);
-      if (key < keys[mid]) {
+      if (key <= keys[mid]) {
         result = mid;
         high = mid - 1;
       } else {

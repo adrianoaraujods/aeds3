@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { useData } from "@/hooks/use-data";
 import { cn } from "@/lib/utils";
-import { getDrawing } from "@/actions/drawing";
+import { getProductData } from "@/actions/product";
 import { Text } from "@/components/typography/text";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,24 +22,22 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { DEAFULT_DRAWING } from "@/schemas/drawing";
+import { ProductData } from "@/schemas/product";
 
 import { CheckIcon, ChevronsUpDownIcon } from "lucide-react";
 
-import type { DrawingData } from "@/schemas/drawing";
-
-export function DrawingSelect({
-  drawing,
-  setDrawing,
+export function ProductSelect({
+  product,
+  setProduct,
   className,
   ...props
 }: React.ComponentProps<typeof Button> & {
-  drawing: DrawingData;
-  setDrawing: React.Dispatch<React.SetStateAction<DrawingData>>;
+  product: Omit<ProductData, "drawings">;
+  setProduct: (product: ProductData) => void;
 }) {
   const [isOpen, setIsOpen] = React.useState(false);
   const {
-    data: { drawings },
+    data: { products },
   } = useData();
 
   return (
@@ -51,7 +49,7 @@ export function DrawingSelect({
           className={cn("w-[200px] justify-between", className)}
           {...props}
         >
-          {drawing.isNew ? "Novo desenho" : drawing.number}
+          {product.code === "" ? "Selecione..." : product.code}
 
           <ChevronsUpDownIcon className="opacity-50" />
         </Button>
@@ -59,51 +57,36 @@ export function DrawingSelect({
 
       <PopoverContent className="w-[200px] p-0">
         <Command>
-          <CommandInput placeholder="Pesquisar desenho..." className="h-9" />
+          <CommandInput placeholder="Pesquisar produto..." className="h-9" />
 
           <CommandList>
-            <CommandEmpty>Nenhum desenho encontrado.</CommandEmpty>
+            <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
 
             <CommandGroup>
-              <CommandItem
-                value="Novo desenho"
-                onSelect={() => {
-                  setDrawing(DEAFULT_DRAWING);
-                  setIsOpen(false);
-                }}
-              >
-                <Text size="sm">Novo desenho</Text>
-
-                <CheckIcon
-                  className={cn(
-                    "ml-auto",
-                    drawing.isNew ? "opacity-100" : "opacity-0"
-                  )}
-                />
-              </CommandItem>
-
-              {drawings.map(({ number }) => (
+              {products.map(({ id, code, description }) => (
                 <CommandItem
-                  key={number}
-                  value={number}
+                  key={id}
+                  value={`${code} ${description}`}
                   onSelect={async () => {
-                    const res = await getDrawing(number);
+                    const res = await getProductData(id);
 
                     if (!res.ok) {
-                      toast.error("Houve algum erro ao carregar o desenho.");
+                      toast.error("Houve algum erro ao carregar o produto.");
                       return;
                     }
 
-                    setDrawing({ ...res.data, isNew: false });
+                    setProduct(res.data);
                     setIsOpen(false);
                   }}
                 >
-                  <Text>{number}</Text>
+                  <Text>
+                    {code} | {description}
+                  </Text>
 
                   <CheckIcon
                     className={cn(
                       "ml-auto",
-                      drawing.number ? "opacity-100" : "opacity-0"
+                      id === product.id ? "opacity-100" : "opacity-0"
                     )}
                   />
                 </CommandItem>

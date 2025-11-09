@@ -28,6 +28,7 @@ export function serialize(value: any, schema: z.ZodType): Buffer {
       numberBuffer.writeInt32BE(
         value === undefined ? 2_147_483_647 : value * 100
       );
+
       return numberBuffer;
 
     case "bigint":
@@ -158,7 +159,7 @@ export function deserialize(
     case "date":
       const date = Number(buffer.readBigUInt64BE(offset));
       if (date !== 0) value = new Date(date);
-      bytesRead = 4;
+      bytesRead = 8;
       break;
 
     case "string":
@@ -179,7 +180,7 @@ export function deserialize(
         offset + bytesRead + stringLength
       );
 
-      if (string !== "") value = string;
+      if (string !== "") value = string.replaceAll("\x00", "");
       bytesRead += stringLength;
       break;
 
@@ -247,4 +248,69 @@ export function deserialize(
   }
 
   return { value, offset: offset + bytesRead };
+}
+
+export function getLength(schema: z.ZodType): number {
+  let bytesRead = 0;
+
+  switch (schema.type) {
+    case "boolean":
+      bytesRead = 1;
+      break;
+
+    case "int":
+      bytesRead = 4;
+      break;
+
+    case "number":
+      bytesRead = 4;
+      break;
+
+    case "bigint":
+      bytesRead = 8;
+      break;
+
+    case "date":
+      bytesRead = 8;
+      break;
+
+    case "string":
+      const { maxLength } = schema as z.ZodString;
+
+      if (!maxLength) {
+        throw new Error("Cannot get the size of a variable length string.");
+      }
+
+      bytesRead = maxLength;
+      break;
+
+    case "array":
+      throw new Error(
+        "Cannot get the size of a schema with an array of variable length."
+      );
+
+    case "object":
+      const objectShape = (schema as z.ZodObject).shape;
+
+      for (const key of Object.keys(objectShape)) {
+        bytesRead += getLength(objectShape[key]);
+      }
+
+      break;
+
+    case "enum":
+      bytesRead = 1;
+      break;
+
+    case "pipe":
+      return getLength((schema as z.ZodPipe<z.ZodAny>).in);
+
+    case "optional":
+      return getLength((schema as z.ZodOptional<z.ZodAny>).unwrap());
+
+    default:
+      throw new Error(`Invalid type: ${schema.type}`);
+  }
+
+  return bytesRead;
 }

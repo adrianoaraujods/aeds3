@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { useData } from "@/hooks/use-data";
 import { cn } from "@/lib/utils";
-import { getDrawing } from "@/actions/drawing";
+import { getClient } from "@/actions/client";
 import { Text } from "@/components/typography/text";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,25 +22,30 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { DEAFULT_DRAWING } from "@/schemas/drawing";
 
 import { CheckIcon, ChevronsUpDownIcon } from "lucide-react";
 
-import type { DrawingData } from "@/schemas/drawing";
-
-export function DrawingSelect({
-  drawing,
-  setDrawing,
+export function ClientSelect({
+  clientId,
+  setClientId,
   className,
   ...props
 }: React.ComponentProps<typeof Button> & {
-  drawing: DrawingData;
-  setDrawing: React.Dispatch<React.SetStateAction<DrawingData>>;
+  clientId: number;
+  setClientId: (clientId: number) => void;
 }) {
   const [isOpen, setIsOpen] = React.useState(false);
   const {
-    data: { drawings },
+    data: { clients },
   } = useData();
+
+  const [clientName, setClientName] = React.useState<string>();
+
+  React.useEffect(() => {
+    const client = clients.find(({ id }) => id === clientId);
+
+    setClientName(!client ? undefined : client.name);
+  }, [clientId, clients]);
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -51,7 +56,7 @@ export function DrawingSelect({
           className={cn("w-[200px] justify-between", className)}
           {...props}
         >
-          {drawing.isNew ? "Novo desenho" : drawing.number}
+          {clientName || "Selecione..."}
 
           <ChevronsUpDownIcon className="opacity-50" />
         </Button>
@@ -59,51 +64,35 @@ export function DrawingSelect({
 
       <PopoverContent className="w-[200px] p-0">
         <Command>
-          <CommandInput placeholder="Pesquisar desenho..." className="h-9" />
+          <CommandInput placeholder="Pesquisar cliente..." className="h-9" />
 
           <CommandList>
-            <CommandEmpty>Nenhum desenho encontrado.</CommandEmpty>
+            <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
 
             <CommandGroup>
-              <CommandItem
-                value="Novo desenho"
-                onSelect={() => {
-                  setDrawing(DEAFULT_DRAWING);
-                  setIsOpen(false);
-                }}
-              >
-                <Text size="sm">Novo desenho</Text>
-
-                <CheckIcon
-                  className={cn(
-                    "ml-auto",
-                    drawing.isNew ? "opacity-100" : "opacity-0"
-                  )}
-                />
-              </CommandItem>
-
-              {drawings.map(({ number }) => (
+              {clients.map(({ id, name }) => (
                 <CommandItem
-                  key={number}
-                  value={number}
+                  key={id}
+                  value={String(id)}
                   onSelect={async () => {
-                    const res = await getDrawing(number);
+                    const res = await getClient(id);
 
                     if (!res.ok) {
-                      toast.error("Houve algum erro ao carregar o desenho.");
+                      toast.error("Houve algum erro ao carregar o cliente.");
                       return;
                     }
 
-                    setDrawing({ ...res.data, isNew: false });
+                    setClientName(name);
+                    setClientId(id);
                     setIsOpen(false);
                   }}
                 >
-                  <Text>{number}</Text>
+                  <Text>{name}</Text>
 
                   <CheckIcon
                     className={cn(
                       "ml-auto",
-                      drawing.number ? "opacity-100" : "opacity-0"
+                      id === clientId ? "opacity-100" : "opacity-0"
                     )}
                   />
                 </CommandItem>

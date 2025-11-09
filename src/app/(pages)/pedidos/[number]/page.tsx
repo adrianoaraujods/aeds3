@@ -2,12 +2,11 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 
 import { toast } from "sonner";
 
-import { getProductData } from "@/actions/product";
-import { ProductForm } from "@/components/form/product-form";
+import { getOrderData } from "@/actions/order";
+import { OrderForm } from "@/components/form/order-form";
 import { Heading } from "@/components/typography/heading";
 import { Text } from "@/components/typography/text";
 import {
@@ -19,33 +18,32 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
+import { OrderData } from "@/schemas/order";
 
 import { LockOpenIcon } from "lucide-react";
 
-import type { ProductData } from "@/schemas/product";
-
-export default function ProductPage({
+export default function OrderPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ number: string }>;
 }) {
-  const id = Number(React.use(params).id);
+  const { number } = React.use(params);
 
   const [isLoading, setIsLoading] = React.useState(true);
-  const [product, setProject] = React.useState<ProductData | null>(null);
+  const [order, setOrder] = React.useState<OrderData | null>(null);
   const [canEdit, setCanEdit] = React.useState(false);
 
   React.useEffect(() => {
-    getProductData(id).then(async (res) => {
+    getOrderData(number).then(async (res) => {
       if (res.ok) {
-        setProject(res.data);
+        setOrder(res.data);
       } else {
-        toast.error("Erro ao carregar o produto.");
+        toast.error("Erro ao carregar o pedido.");
       }
 
       setIsLoading(false);
     });
-  }, [id]);
+  }, [number]);
 
   if (isLoading) return null;
 
@@ -57,7 +55,7 @@ export default function ProductPage({
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
                 <Heading element="h1" className="mb-0" asChild>
-                  <Link href="/produtos">Produtos</Link>
+                  <Link href="/pedidos">Pedidos</Link>
                 </Heading>
               </BreadcrumbLink>
             </BreadcrumbItem>
@@ -67,14 +65,14 @@ export default function ProductPage({
             <BreadcrumbItem>
               <Heading element="h1" className="mb-0" asChild>
                 <BreadcrumbPage>
-                  {!product ? "Não Encontrado" : product.description}
+                  {!order ? "Não Encontrado" : order.number}
                 </BreadcrumbPage>
               </Heading>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
 
-        {product && !canEdit && (
+        {order && !canEdit && (
           <Button onClick={() => setCanEdit(true)}>
             <Text>Habilitar Edição</Text>
 
@@ -83,9 +81,9 @@ export default function ProductPage({
         )}
       </header>
 
-      {product && (
-        <ProductForm
-          initialValues={product}
+      {order && (
+        <OrderForm
+          initialValues={order}
           type="edit"
           canEdit={canEdit}
           setCanEdit={setCanEdit}

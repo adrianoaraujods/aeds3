@@ -2,15 +2,16 @@
 
 import { createDrawing, deleteDrawing } from "@/actions/drawing";
 import { File } from "@/actions/file";
+import { getProductOrders } from "@/actions/order-item";
 import {
   createProductDrawing,
   getProductDrawings,
   removeAllProductDrawings,
 } from "@/actions/product-drawing";
-import { Drawing } from "@/schemas/drawing";
 import { productDataSchema, productSchema } from "@/schemas/product";
 
 import type { ActionResponse, ErrorCode } from "@/lib/config";
+import type { Drawing } from "@/schemas/drawing";
 import type { Product, ProductData } from "@/schemas/product";
 
 const file = new File({
@@ -231,6 +232,16 @@ export async function updateProduct(
 export async function deleteProduct(
   id: number
 ): Promise<ActionResponse<Product>> {
+  const retrievingOrderItems = await getProductOrders(id);
+
+  if (!retrievingOrderItems.ok) {
+    return { ok: false, status: retrievingOrderItems.status };
+  }
+
+  if (retrievingOrderItems.data.length) {
+    return { ok: false, status: 409 };
+  }
+
   const removingDrawings = await removeAllProductDrawings(id);
 
   if (!removingDrawings.ok) {

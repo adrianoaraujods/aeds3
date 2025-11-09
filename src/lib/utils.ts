@@ -43,6 +43,15 @@ export function formatNumber(value: string) {
   return value.replace(/[^0-9]/g, "");
 }
 
+export function formatMoney(value: number) {
+  const formatter = new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+
+  return formatter.format(value);
+}
+
 export function formatCPF(value: string) {
   value = value.replace(/\D/g, "");
   value = value.replace(/(\d{3})(\d)/, "$1.$2");
