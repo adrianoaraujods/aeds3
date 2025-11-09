@@ -73,3 +73,4 @@ Um cliente pode fazer vários pedidos de compra, e cada pedido deve estar associ
 ## Entregas
 
 - [Formulário 1 (Fase II)](./docs/formulário-1.md)
+- [Formulário 2 (Fase III)](./docs/formulário-2.md)
