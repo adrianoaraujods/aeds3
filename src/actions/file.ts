@@ -3,7 +3,7 @@ import z from "zod";
 
 import { BpTree } from "@/lib/bp-tree";
 import { deserialize, serialize } from "@/lib/buffer";
-import { ActionResponse } from "@/lib/config";
+import { ActionResponse, DATA_FOLDER_PATH } from "@/lib/config";
 
 export class File<
   Schema extends z.ZodObject,
@@ -32,7 +32,7 @@ export class File<
     uniqueFields?: (keyof z.infer<Schema>)[];
     indexedFields?: (keyof z.infer<Schema>)[];
   }) {
-    this.filePath = `./data/${name}.db`;
+    this.filePath = DATA_FOLDER_PATH + name + ".db";
     this.uniqueFields = [...new Set([primaryKey, ...uniqueFields])];
     this.schema = schema;
     this.primaryKey = primaryKey;
@@ -45,7 +45,7 @@ export class File<
 
     for (const key of indexedKeys) {
       const tree = new BpTree(
-        `./data/indexes/${name}.${String(key)}.bpt`,
+        DATA_FOLDER_PATH + `indexes/${name}.${String(key)}.bpt`,
         this.schema.shape[String(key)]
       );
 

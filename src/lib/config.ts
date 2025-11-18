@@ -2,6 +2,8 @@ import { BoxesIcon, Building2Icon, ClipboardListIcon } from "lucide-react";
 
 import type { LucideIcon } from "lucide-react";
 
+export const DATA_FOLDER_PATH = "./data/";
+
 type Theme = (typeof THEMES)[number];
 const THEMES = ["light", "dark", "system"] as const;
 

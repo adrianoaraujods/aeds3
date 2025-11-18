@@ -82,3 +82,25 @@ export function formatPhone(value: string) {
 
   return value;
 }
+
+export function formatTime(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${year}-${month}-${day}-${hours}-${minutes}`;
+}
+
+export function unformatTime(time: string): Date {
+  const [year, month, day, hours, minutes] = time.split("-");
+
+  return new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hours),
+    Number(minutes)
+  );
+}
