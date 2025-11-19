@@ -1,13 +1,13 @@
 import { Queue } from "@/lib/queue";
 
 class HuffmanNode {
-  char: string | null;
+  char: number | null; // Changed to number (0-255) for byte values
   frequency: number;
   left: HuffmanNode | null;
   right: HuffmanNode | null;
 
   constructor(
-    char: string | null,
+    char: number | null,
     frequency: number,
     left: HuffmanNode | null = null,
     right: HuffmanNode | null = null
@@ -20,59 +20,159 @@ class HuffmanNode {
 }
 
 export class Huffman {
-  private encodingMap: Map<string, string> = new Map();
+  private encodingMap: Map<number, string> = new Map();
   private huffmanTreeRoot: HuffmanNode | null = null;
 
-  encode(text: string): string {
-    if (!text) return "";
+  /**
+   * Encodes a Buffer into a compressed Buffer.
+   * Structure: [Header: Frequency Table] + [Metadata: Padding] + [Body: Compressed Bits]
+   */
+  encode(data: Buffer): Buffer {
+    if (data.length === 0) return Buffer.alloc(0);
 
-    const frequencies = this.calculateFrequencies(text);
+    // 1. Calculate Frequencies
+    const frequencies = this.calculateFrequencies(data);
+
+    // 2. Build Tree and Code Map
     this.huffmanTreeRoot = this.buildHuffmanTree(frequencies);
+    this.encodingMap.clear();
     this.generateCodes(this.huffmanTreeRoot, "");
 
-    let encodedString = "";
-    for (const char of text) {
-      encodedString += this.encodingMap.get(char);
+    // 3. Bit Packing
+    // We use an array of numbers (bytes) for dynamic growth, then convert to Buffer
+    const packedData: number[] = [];
+    let currentByte = 0;
+    let bitCount = 0;
+
+    for (const byte of data) {
+      const code = this.encodingMap.get(byte);
+      if (!code) continue;
+
+      for (let i = 0; i < code.length; i++) {
+        // Shift current byte left and add the new bit (0 or 1)
+        currentByte = (currentByte << 1) | (code[i] === "1" ? 1 : 0);
+        bitCount++;
+
+        // If we have 8 bits, push to result and reset
+        if (bitCount === 8) {
+          packedData.push(currentByte);
+          currentByte = 0;
+          bitCount = 0;
+        }
+      }
     }
 
-    return encodedString;
+    // Handle remaining bits (padding)
+    let padding = 0;
+    if (bitCount > 0) {
+      padding = 8 - bitCount;
+      currentByte = currentByte << padding; // Shift remaining bits to the left
+      packedData.push(currentByte);
+    }
+
+    // 4. Create Header (Serialize Frequency Table)
+    // Format: [NumEntries(2 bytes)] -> [Byte(1 byte)][Freq(4 bytes)]...
+    const freqEntries = Array.from(frequencies.entries());
+    const headerSize = 2 + freqEntries.length * 5;
+    const header = Buffer.alloc(headerSize);
+
+    header.writeUInt16BE(freqEntries.length, 0); // Write number of entries
+
+    let offset = 2;
+    for (const [byte, freq] of freqEntries) {
+      header.writeUInt8(byte, offset);
+      header.writeUInt32BE(freq, offset + 1);
+      offset += 5;
+    }
+
+    // 5. Combine: [Header] + [Padding Count (1 byte)] + [Packed Data]
+    const paddingBuffer = Buffer.from([padding]);
+    const bodyBuffer = Buffer.from(packedData);
+
+    return Buffer.concat([header, paddingBuffer, bodyBuffer]);
   }
 
-  decode(encodedText: string): string {
-    if (!encodedText || !this.huffmanTreeRoot) return "";
+  decode(buffer: Buffer): Buffer {
+    if (buffer.length === 0) return Buffer.alloc(0);
 
-    let decodedString = "";
+    // 1. Parse Header to Rebuild Tree
+    let offset = 0;
+    const numEntries = buffer.readUInt16BE(offset);
+    offset += 2;
+
+    const frequencies = new Map<number, number>();
+    for (let i = 0; i < numEntries; i++) {
+      const char = buffer.readUInt8(offset);
+      const freq = buffer.readUInt32BE(offset + 1);
+      frequencies.set(char, freq);
+      offset += 5;
+    }
+
+    this.huffmanTreeRoot = this.buildHuffmanTree(frequencies);
+
+    // 2. Read Padding
+    const padding = buffer.readUInt8(offset);
+    offset += 1;
+
+    // 3. Decode Body
+    const decodedBytes: number[] = [];
     let currentNode = this.huffmanTreeRoot;
 
-    for (const bit of encodedText) {
-      if (bit === "0") {
-        currentNode = currentNode!.left!;
-      } else {
-        currentNode = currentNode!.right!;
-      }
+    // Iterate through the remaining data bytes
+    for (let i = offset; i < buffer.length; i++) {
+      const byte = buffer[i];
 
-      if (currentNode!.char !== null) {
-        // Leaf node
-        decodedString += currentNode!.char;
-        currentNode = this.huffmanTreeRoot; // Reset to root for next character
+      // Determine how many bits to read from this byte
+      // If it's the last byte, ignore the padding bits at the end
+      const bitsToRead = i === buffer.length - 1 ? 8 - padding : 8;
+
+      // Process bits from left to right (MSB to LSB)
+      for (let bit = 7; bit >= 8 - bitsToRead; bit--) {
+        const isSet = (byte >> bit) & 1; // Check if bit at position 'bit' is 1
+
+        if (isSet === 0) {
+          currentNode = currentNode!.left!;
+        } else {
+          currentNode = currentNode!.right!;
+        }
+
+        if (currentNode!.char !== null) {
+          // Leaf node found
+          decodedBytes.push(currentNode!.char);
+          currentNode = this.huffmanTreeRoot; // Reset to root
+        }
       }
     }
-    return decodedString;
+
+    return Buffer.from(decodedBytes);
   }
 
-  private calculateFrequencies(text: string): Map<string, number> {
-    const frequencies = new Map<string, number>();
-    for (const char of text) {
-      frequencies.set(char, (frequencies.get(char) || 0) + 1);
+  private calculateFrequencies(data: Buffer): Map<number, number> {
+    const frequencies = new Map<number, number>();
+    for (const byte of data) {
+      frequencies.set(byte, (frequencies.get(byte) || 0) + 1);
     }
     return frequencies;
   }
 
-  private buildHuffmanTree(frequencies: Map<string, number>): HuffmanNode {
+  private buildHuffmanTree(frequencies: Map<number, number>): HuffmanNode {
     const pq = new Queue<HuffmanNode>((a, b) => a.frequency - b.frequency);
 
     for (const [char, freq] of frequencies.entries()) {
       pq.enqueue(new HuffmanNode(char, freq));
+    }
+
+    // Edge case: If there's only 1 type of byte in the whole file
+    if (pq.size() === 1) {
+      const onlyNode = pq.dequeue()!;
+      // Create a dummy parent so we can assign a code (e.g., "0")
+      const dummyRoot = new HuffmanNode(
+        null,
+        onlyNode.frequency,
+        onlyNode,
+        null
+      );
+      return dummyRoot;
     }
 
     while (pq.size() > 1) {
@@ -95,7 +195,11 @@ export class Huffman {
 
     if (node.char !== null) {
       // Leaf node
-      this.encodingMap.set(node.char, currentCode);
+      // If currentCode is empty (single character file case handled by dummy root above), default to "0"
+      this.encodingMap.set(
+        node.char,
+        currentCode.length > 0 ? currentCode : "0"
+      );
       return;
     }
 
