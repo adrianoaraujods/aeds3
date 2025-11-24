@@ -6,6 +6,7 @@ import z from "zod";
 import { deserialize, serialize } from "@/lib/buffer";
 import { DATA_FOLDER_PATH } from "@/lib/config";
 import { Huffman } from "@/lib/huffman";
+import { LZW } from "@/lib/lzw";
 import { formatTime } from "@/lib/utils";
 import { reindexAllDataFiles } from "@/actions/data";
 
@@ -28,25 +29,29 @@ export async function createBackup(
     let originalSize = 0;
     let compressedSize = 0;
 
-    if (algorithm === "huffman") {
-      const huffman = new Huffman();
+    for (const fileName of dataFiles) {
+      const file = fs.readFileSync(DATA_FOLDER_PATH + fileName);
+      const fileSize = fs.statSync(DATA_FOLDER_PATH + fileName).size;
+      originalSize += fileSize;
 
-      for (const fileName of dataFiles) {
-        const file = fs.readFileSync(DATA_FOLDER_PATH + fileName);
-        const fileSize = fs.statSync(DATA_FOLDER_PATH + fileName).size;
-        originalSize += fileSize;
+      let dataBuffer: Buffer<ArrayBufferLike>;
 
-        const dataBuffer = huffman.encode(file);
-        const fileNameBuffer = serialize(fileName, z.string());
-        const dataLengthBuffer = Buffer.alloc(4);
-        dataLengthBuffer.writeUint32BE(dataBuffer.length);
-
-        compressedSize += dataBuffer.length;
-
-        backupFile.push(fileNameBuffer, dataLengthBuffer, dataBuffer);
+      if (algorithm === "huffman") {
+        const huffman = new Huffman();
+        dataBuffer = huffman.compress(file);
+      } else if (algorithm === "lzw") {
+        dataBuffer = LZW.compress(file);
+      } else {
+        return { ok: false, status: 400, message: "Algoritmo não suportado" };
       }
-    } else {
-      return { ok: false, status: 400, message: "Algoritmo não suportado" };
+
+      const fileNameBuffer = serialize(fileName, z.string());
+      const dataLengthBuffer = Buffer.alloc(4);
+      dataLengthBuffer.writeUint32BE(dataBuffer.length);
+
+      compressedSize += dataBuffer.length;
+
+      backupFile.push(fileNameBuffer, dataLengthBuffer, dataBuffer);
     }
 
     console.log("Total Data Size: ", originalSize);
@@ -88,34 +93,43 @@ export async function loadBackup(): Promise<ActionResponse> {
     const algorithm = deserializingAlgorithm.value as CompressionAlgorithm;
     let { offset } = deserializingAlgorithm;
 
-    if (algorithm === "huffman") {
-      const huffman = new Huffman();
+    while (offset < backupFileBuffer.length) {
+      const deserializingFileName = deserialize(
+        backupFileBuffer,
+        offset,
+        z.string()
+      );
 
-      while (offset < backupFileBuffer.length) {
-        const deserializingFileName = deserialize(
-          backupFileBuffer,
-          offset,
-          z.string()
-        );
+      const fileName = deserializingFileName.value;
+      offset = deserializingFileName.offset;
 
-        const fileName = deserializingFileName.value;
-        offset = deserializingFileName.offset;
+      const dataLength = backupFileBuffer.readUInt32BE(offset);
+      offset += 4;
 
-        const dataLength = backupFileBuffer.readUInt32BE(offset);
-        offset += 4;
+      const compressedBuffer = backupFileBuffer.subarray(
+        offset,
+        offset + dataLength
+      );
 
-        const compressedBuffer = backupFileBuffer.subarray(
-          offset,
-          offset + dataLength
-        );
+      let dataBuffer: Buffer<ArrayBufferLike>;
 
-        const dataBuffer = huffman.decode(compressedBuffer);
-        fs.writeFileSync(DATA_FOLDER_PATH + fileName, dataBuffer);
-
-        offset += dataLength;
+      if (algorithm === "huffman") {
+        const huffman = new Huffman();
+        dataBuffer = huffman.decompress(compressedBuffer);
+      } else if (algorithm === "lzw") {
+        dataBuffer = LZW.decompress(compressedBuffer);
+      } else {
+        return {
+          ok: false,
+          status: 500,
+          message:
+            "Não foi possível identificar o algoritmo, provavelmente o arquivo de backup está corrompido",
+        };
       }
-    } else {
-      throw new Error("Error: unsupported algorithm.");
+
+      fs.writeFileSync(DATA_FOLDER_PATH + fileName, dataBuffer);
+
+      offset += dataLength;
     }
 
     reindexAllDataFiles();

@@ -1,7 +1,7 @@
 import { Queue } from "@/lib/queue";
 
 class HuffmanNode {
-  char: number | null; // Changed to number (0-255) for byte values
+  char: number | null;
   frequency: number;
   left: HuffmanNode | null;
   right: HuffmanNode | null;
@@ -27,7 +27,7 @@ export class Huffman {
    * Encodes a Buffer into a compressed Buffer.
    * Structure: [Header: Frequency Table] + [Metadata: Padding] + [Body: Compressed Bits]
    */
-  encode(data: Buffer): Buffer {
+  public compress(data: Buffer): Buffer {
     if (data.length === 0) return Buffer.alloc(0);
 
     // 1. Calculate Frequencies
@@ -92,7 +92,7 @@ export class Huffman {
     return Buffer.concat([header, paddingBuffer, bodyBuffer]);
   }
 
-  decode(buffer: Buffer): Buffer {
+  public decompress(buffer: Buffer): Buffer {
     if (buffer.length === 0) return Buffer.alloc(0);
 
     // 1. Parse Header to Rebuild Tree
