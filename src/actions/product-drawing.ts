@@ -100,3 +100,7 @@ export async function removeAllProductDrawings(
 
   return { ok: true, data: undefined };
 }
+
+export async function reindexProductDrawingsFile() {
+  return file.reindex();
+}

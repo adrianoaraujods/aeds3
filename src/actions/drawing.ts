@@ -39,3 +39,7 @@ export async function deleteDrawing(
 ): Promise<ActionResponse<Drawing>> {
   return file.delete(number);
 }
+
+export async function reindexDrawingsFile() {
+  return file.reindex();
+}

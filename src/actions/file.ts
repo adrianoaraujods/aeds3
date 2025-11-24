@@ -216,6 +216,7 @@ export class File<
 
     return { ok: false, status: 500 };
   }
+
   public getAll(): ActionResponse<z.infer<Schema>[]> {
     let fd: number | undefined;
 
@@ -256,6 +257,56 @@ export class File<
       }
 
       return { ok: true, status: 200, data: records };
+    } catch (error) {
+      console.error(error);
+    } finally {
+      if (fd !== undefined) fs.closeSync(fd);
+    }
+
+    return { ok: false, status: 500 };
+  }
+
+  public reindex(): ActionResponse {
+    let fd: number | undefined;
+
+    try {
+      fd = fs.openSync(this.filePath, "r");
+
+      const stats = fs.fstatSync(fd);
+      const fileSize = stats.size;
+
+      // If primaryKey is "id", the first 4 bytes are the serial counter.
+      // We skip them to start reading records.
+      let offset = this.primaryKey === "id" ? 4 : 0;
+
+      while (offset < fileSize) {
+        // Read metadata: 1 byte (boolean) + 4 bytes (UInt32BE length) = 5 bytes
+        const metaBuffer = Buffer.alloc(5);
+
+        // Ensure we don't read past EOF
+        if (offset + 5 > fileSize) break;
+
+        fs.readSync(fd, metaBuffer, 0, 5, offset);
+
+        const isValid = deserialize(metaBuffer, 0, z.boolean());
+        const dataLength = metaBuffer.readUInt32BE(1);
+
+        if (isValid) {
+          const dataBuffer = Buffer.alloc(dataLength);
+          fs.readSync(fd, dataBuffer, 0, dataLength, offset + 5);
+
+          const { value: record } = deserialize(dataBuffer, 0, this.schema);
+
+          for (const indexKey of Object.keys(this.indexes)) {
+            this.indexes[indexKey]!.insert(record[indexKey], offset);
+          }
+        }
+
+        // Move offset to the next record (metadata size + data length)
+        offset += 5 + dataLength;
+      }
+
+      return { ok: true, status: 200, data: undefined };
     } catch (error) {
       console.error(error);
     } finally {

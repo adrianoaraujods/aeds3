@@ -132,3 +132,7 @@ export async function deleteAllOrderItems(
 
   return { ok: true, data: undefined };
 }
+
+export async function reindexOrderItemsFile() {
+  return file.reindex();
+}

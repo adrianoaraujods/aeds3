@@ -1,15 +1,17 @@
-import { getAllClients } from "@/actions/client";
-import { getAllDrawings } from "@/actions/drawing";
-import { getAllOrders } from "@/actions/order";
-import { getAllProducts } from "@/actions/product";
+import { getAllClients, reindexClientsFile } from "@/actions/client";
+import { getAllDrawings, reindexDrawingsFile } from "@/actions/drawing";
+import { getAllOrders, reindexOrdersFile } from "@/actions/order";
+import { reindexOrderItemsFile } from "@/actions/order-item";
+import { getAllProducts, reindexProductsFile } from "@/actions/product";
+import { reindexProductDrawingsFile } from "@/actions/product-drawing";
 
-import type { ActionResponse } from "@/lib/config";
+import type { ActionResponse, ErrorCode } from "@/lib/config";
 import type { Client } from "@/schemas/client";
 import type { Drawing } from "@/schemas/drawing";
 import type { Order } from "@/schemas/order";
 import type { ProductData } from "@/schemas/product";
 
-type Data = {
+export type Data = {
   clients: Client[];
   drawings: Drawing[];
   products: ProductData[];
@@ -18,7 +20,7 @@ type Data = {
   // invoices: Invoice[];
 };
 
-async function loadData(): Promise<ActionResponse<Data, Data>> {
+export async function loadData(): Promise<ActionResponse<Data, Data>> {
   let serverError = false; // 500
 
   const { clients, drawings, products, orders } = await Promise.allSettled([
@@ -72,4 +74,37 @@ async function loadData(): Promise<ActionResponse<Data, Data>> {
   return { ok: true, status: 200, data };
 }
 
-export { loadData, type Data };
+export async function reindexAllDataFiles(): Promise<ActionResponse> {
+  const status = await Promise.allSettled([
+    reindexClientsFile(),
+    reindexDrawingsFile(),
+    reindexOrdersFile(),
+    reindexProductsFile(),
+    reindexOrderItemsFile(),
+    reindexProductDrawingsFile(),
+  ]).then((responses) => {
+    let hasRejected = false;
+    let failedStatus: ErrorCode | undefined;
+
+    for (const response of responses) {
+      if (response.status === "rejected") {
+        hasRejected = true;
+        continue;
+      }
+
+      if (!response.value.ok) {
+        failedStatus = response.value.status;
+        continue;
+      }
+    }
+
+    if (hasRejected) return 500;
+    if (failedStatus !== undefined) return failedStatus;
+
+    return 200;
+  });
+
+  if (status !== 200) return { ok: false, status };
+
+  return { ok: true, data: undefined };
+}

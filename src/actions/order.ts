@@ -233,3 +233,7 @@ export async function deleteOrder(
 
   return { ok: true, data: deletingOrder.data };
 }
+
+export async function reindexOrdersFile() {
+  return file.reindex();
+}

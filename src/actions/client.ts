@@ -38,3 +38,7 @@ export async function deleteClient(
 ): Promise<ActionResponse<Client>> {
   return file.delete(id);
 }
+
+export async function reindexClientsFile() {
+  return file.reindex();
+}

@@ -254,3 +254,7 @@ export async function deleteProduct(
 
   return { ok: true, data: deletingProduct.data };
 }
+
+export async function reindexProductsFile() {
+  return file.reindex();
+}
