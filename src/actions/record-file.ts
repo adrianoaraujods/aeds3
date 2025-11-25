@@ -337,7 +337,7 @@ export class RecordFile<
 
         fs.readSync(fd, metaBuffer, 0, 5, offset);
 
-        const isValid = deserialize(metaBuffer, 0, z.boolean());
+        const { value: isValid } = deserialize(metaBuffer, 0, z.boolean());
         const dataLength = metaBuffer.readUInt32BE(1);
 
         if (isValid) {
@@ -389,7 +389,7 @@ export class RecordFile<
 
         fs.readSync(fd, metaBuffer, 0, 5, offset);
 
-        const isValid = deserialize(metaBuffer, 0, z.boolean());
+        const { value: isValid } = deserialize(metaBuffer, 0, z.boolean());
         const dataLength = metaBuffer.readUInt32BE(1);
 
         if (isValid) {
@@ -501,7 +501,7 @@ export class RecordFile<
       const metaBuffer = Buffer.alloc(5);
       fs.readSync(fd, metaBuffer, 0, metaBuffer.length, offset);
 
-      const isValid = deserialize(metaBuffer, 0, z.boolean());
+      const { value: isValid } = deserialize(metaBuffer, 0, z.boolean());
 
       if (!isValid) return null;
 
