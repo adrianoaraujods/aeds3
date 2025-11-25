@@ -36,7 +36,12 @@ export async function getOrderItems(
 
   const retrievingItems = file.select("orderNumber", orderNumber);
 
-  if (!retrievingItems.ok) return { ...retrievingItems, data: items };
+  if (!retrievingItems.ok)
+    return {
+      ...retrievingItems,
+      message: "Houve algum erro ao recuperar os itens do pedido.",
+      data: items,
+    };
 
   const privateKey = await getPrivateKey();
 
@@ -58,10 +63,20 @@ export async function getOrderItems(
   }
 
   if (failedStatus !== undefined) {
-    return { ok: false, status: failedStatus, data: items };
+    return {
+      ok: false,
+      status: failedStatus,
+      message: "Houve algum erro ao carregar algum produto do pedido.",
+      data: items,
+    };
   }
 
-  return { ok: true, data: items };
+  return {
+    ok: true,
+    status: 200,
+    message: "Pedido carregado com sucesso!",
+    data: items,
+  };
 }
 
 export async function getProductOrders(
@@ -72,7 +87,12 @@ export async function getProductOrders(
   const retrievingItems = file.select("productId", productId);
 
   if (!retrievingItems.ok) {
-    return { ok: false, status: retrievingItems.status, data: orders };
+    return {
+      ok: false,
+      status: retrievingItems.status,
+      message: "Houve algum erro ao carregar os itens do pedido com o produto.",
+      data: orders,
+    };
   }
 
   const ordersNumbers = [
@@ -92,10 +112,20 @@ export async function getProductOrders(
   }
 
   if (failedStatus !== undefined) {
-    return { ok: false, status: failedStatus, data: orders };
+    return {
+      ok: false,
+      status: failedStatus,
+      message: "Houve algum erro ao carregar o pedido com o produto.",
+      data: orders,
+    };
   }
 
-  return { ok: true, data: orders };
+  return {
+    ok: true,
+    status: 200,
+    message: "Pedidos com o produto carregados com sucesso!",
+    data: orders,
+  };
 }
 
 export async function updateOrderItem(
@@ -116,26 +146,40 @@ export async function deleteAllOrderItems(
   const retrievingOrderItems = file.select("orderNumber", orderNumber);
 
   if (!retrievingOrderItems.ok) {
-    return { ok: false, status: retrievingOrderItems.status };
+    return {
+      ok: false,
+      status: retrievingOrderItems.status,
+      message: "Houve algum erro ao carregar os itens do pedido!",
+    };
   }
 
-  const relations = retrievingOrderItems.data;
+  const items = retrievingOrderItems.data;
 
   let failedStatus: ErrorCode | undefined;
 
-  for (const { id } of relations) {
-    const deletingRelation = file.delete(id);
+  for (const { id } of items) {
+    const deletingItem = file.delete(id);
 
-    if (!deletingRelation.ok) {
-      failedStatus = deletingRelation.status;
+    if (!deletingItem.ok) {
+      failedStatus = deletingItem.status;
     }
   }
 
   if (failedStatus) {
-    return { ok: false, status: failedStatus };
+    return {
+      ok: false,
+      status: failedStatus,
+      message:
+        "Houve algum erro ao excluir os itens do pedido. Nenhuma alteração foi feita.",
+    };
   }
 
-  return { ok: true, data: undefined };
+  return {
+    ok: true,
+    status: 200,
+    message: "Todos os itens do pedido foram excluídos com sucesso!",
+    data: undefined,
+  };
 }
 
 export async function reindexOrderItemsFile() {

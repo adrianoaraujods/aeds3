@@ -31,7 +31,12 @@ export async function getProductDrawings(
   const retrievingProduct = file.select("productId", productId);
 
   if (!retrievingProduct.ok) {
-    return { ok: false, status: retrievingProduct.status, data: drawings };
+    return {
+      ok: false,
+      status: retrievingProduct.status,
+      message: "Houve algum erro ao carregar o produto!",
+      data: drawings,
+    };
   }
 
   const product = retrievingProduct.data;
@@ -49,44 +54,70 @@ export async function getProductDrawings(
   }
 
   if (failedStatus !== undefined) {
-    return { ok: false, status: failedStatus, data: drawings };
+    return {
+      ok: false,
+      status: failedStatus,
+      message: "Houve algum erro ao carregar algum desenho!",
+      data: drawings,
+    };
   }
 
-  return { ok: true, data: drawings };
+  return {
+    ok: true,
+    status: 200,
+    message: "Desenhos carregados com sucesso!",
+    data: drawings,
+  };
 }
 
 export async function removeProductDrawing(
   productId: Product["id"],
   drawingNumber: Drawing["number"]
 ): Promise<ActionResponse> {
-  const res = file.select("productId", productId);
+  const retrievingProduct = file.select("productId", productId);
 
-  if (!res.ok) return { ok: false, status: res.status };
+  if (!retrievingProduct.ok)
+    return {
+      ok: false,
+      status: retrievingProduct.status,
+      message: "Houve algum erro ao carregar o produto!",
+    };
 
-  const productDrawing = res.data.find(
+  const productDrawing = retrievingProduct.data.find(
     (productDrawing) => productDrawing.drawingNumber === drawingNumber
   );
 
-  if (!productDrawing) return { ok: false, status: 404 };
+  if (!productDrawing)
+    return { ok: false, status: 404, message: "Desenho não encontrado!" };
 
   file.delete(productDrawing.id);
 
-  return { ok: true, data: undefined };
+  return {
+    ok: true,
+    status: 200,
+    message: "O desenho foi removido do produto com sucesso!",
+    data: undefined,
+  };
 }
 
 export async function removeAllProductDrawings(
   productId: Product["id"]
 ): Promise<ActionResponse> {
-  const retrievingRelations = file.select("productId", productId);
+  const retrievingDrawings = file.select("productId", productId);
 
-  if (!retrievingRelations.ok)
-    return { ok: false, status: retrievingRelations.status };
+  if (!retrievingDrawings.ok) {
+    return {
+      ok: false,
+      status: retrievingDrawings.status,
+      message: "Houve algum erro ao carregar os desenhos!",
+    };
+  }
 
-  const relations = retrievingRelations.data;
+  const drawings = retrievingDrawings.data;
 
   let failedStatus: ErrorCode | undefined;
 
-  for (const { id } of relations) {
+  for (const { id } of drawings) {
     const deletingRelation = file.delete(id);
 
     if (!deletingRelation.ok) {
@@ -95,10 +126,20 @@ export async function removeAllProductDrawings(
   }
 
   if (failedStatus) {
-    return { ok: false, status: failedStatus };
+    return {
+      ok: false,
+      status: failedStatus,
+      message:
+        "Houve algum erro ao remover algum desenho! Alguns desenhos podem ter sido removidos.",
+    };
   }
 
-  return { ok: true, data: undefined };
+  return {
+    ok: true,
+    status: 200,
+    message: "Os desenhos foram removidos com sucesso!",
+    data: undefined,
+  };
 }
 
 export async function reindexProductDrawingsFile() {

@@ -30,7 +30,12 @@ export async function createOrder(
   const parser = orderDataSchema.safeParse(data);
 
   if (!parser.success) {
-    return { ok: false, status: 400, data: createdOrderItems };
+    return {
+      ok: false,
+      status: 400,
+      message: "Dados Inválidos! Verifique os campos do pedido.",
+      data: createdOrderItems,
+    };
   }
 
   const { items, ...order } = parser.data;
@@ -59,7 +64,12 @@ export async function createOrder(
     const creatingOrder = file.insert(order);
 
     if (creatingOrder.ok) {
-      return { ok: true, data: creatingOrder.data };
+      return {
+        ok: true,
+        status: 201,
+        message: "Pedido criado com sucesso!",
+        data: creatingOrder.data,
+      };
     }
 
     failedStatus = creatingOrder.status;
@@ -72,14 +82,25 @@ export async function createOrder(
       );
 
       if (!deletingOrderItem.ok) {
-        return { ok: false, status: 509, data: createdOrderItems };
+        return {
+          ok: false,
+          status: 509,
+          message:
+            "Houve algum erro ao criar o pedido! Alguns itens foram criados, isso pode ter corrompido os dados!",
+          data: createdOrderItems,
+        };
       }
 
       createdOrderItems.pop();
     }
   }
 
-  return { ok: false, status: failedStatus, data: createdOrderItems };
+  return {
+    ok: false,
+    status: failedStatus,
+    message: "Houve algum erro ao criar o pedido! Nenhuma alteração foi feita.",
+    data: createdOrderItems,
+  };
 }
 
 export async function getOrder(
@@ -120,7 +141,12 @@ export async function getOrderData(
 
   const client = retrievingClient.data;
 
-  return { ok: true, data: { ...order, items, client } };
+  return {
+    ok: true,
+    status: 200,
+    message: "Pedido recuperado com sucesso!",
+    data: { ...order, items, client },
+  };
 }
 
 export async function getAllOrders(): Promise<
@@ -131,7 +157,12 @@ export async function getAllOrders(): Promise<
   const retrievingOrders = file.getAll();
 
   if (!retrievingOrders.ok) {
-    return { ok: false, status: retrievingOrders.status, data: orders };
+    return {
+      ok: false,
+      status: retrievingOrders.status,
+      message: "Houve algum erro ao carregar os pedidos!",
+      data: orders,
+    };
   }
 
   let failedStatus: ErrorCode | undefined;
@@ -157,10 +188,21 @@ export async function getAllOrders(): Promise<
   }
 
   if (failedStatus) {
-    return { ok: false, status: failedStatus, data: orders };
+    return {
+      ok: false,
+      status: failedStatus,
+      message:
+        "Houve algum erro ao recuperar o cliente ou os itens dos pedidos!",
+      data: orders,
+    };
   }
 
-  return { ok: true, data: orders };
+  return {
+    ok: true,
+    status: 200,
+    message: "Pedidos recuperados com sucesso!",
+    data: orders,
+  };
 }
 
 export async function updateOrder(
@@ -171,7 +213,12 @@ export async function updateOrder(
   const parser = orderDataSchema.safeParse(data);
 
   if (!parser.success) {
-    return { ok: false, status: 400, data: createdItems };
+    return {
+      ok: false,
+      status: 400,
+      message: "Dados Inválidos! Verifique os campos do pedido.",
+      data: createdItems,
+    };
   }
 
   const {
@@ -186,6 +233,8 @@ export async function updateOrder(
     return {
       ok: false,
       status: retrievingOldItems.status,
+      message:
+        "Houve algum erro ao carregar o pedido! Nenhuma alteração foi feita.",
       data: createdItems,
     };
   }
@@ -207,7 +256,13 @@ export async function updateOrder(
     });
 
     if (!creatingItem.ok) {
-      return { ok: false, status: creatingItem.status, data: createdItems };
+      return {
+        ok: false,
+        status: creatingItem.status,
+        message:
+          "Houve algum erro ao criar um item do pedido! Pode ser que algum item tenha sido adicionado.",
+        data: createdItems,
+      };
     }
 
     createdItems.push(creatingItem.data);
@@ -221,7 +276,13 @@ export async function updateOrder(
     const deletingItem = await deleteOrderItem(item.id);
 
     if (!deletingItem.ok) {
-      return { ok: false, status: 509, data: createdItems };
+      return {
+        ok: false,
+        status: 509,
+        message:
+          "Houve algum erro ao remover os itens antigos do pedido! Podem existir dados corrompidos.",
+        data: createdItems,
+      };
     }
   }
 
@@ -238,7 +299,13 @@ export async function updateOrder(
     });
 
     if (!updatingItem.ok) {
-      return { ok: false, status: updatingItem.status, data: createdItems };
+      return {
+        ok: false,
+        status: updatingItem.status,
+        message:
+          "Houve algum erro ao atualizar algum item do pedido! Alguma alteração pode ter ocorrido.",
+        data: createdItems,
+      };
     }
   }
 
@@ -248,11 +315,18 @@ export async function updateOrder(
     return {
       ok: false,
       status: updatingOrder.status,
+      message:
+        "Houve algum erro ao atualizar o pedido! Nenhuma alteração foi feita.",
       data: createdItems,
     };
   }
 
-  return { ok: true, data: updatingOrder.data };
+  return {
+    ok: true,
+    status: 200,
+    message: "Pedido modificado com sucesso!",
+    data: updatingOrder.data,
+  };
 }
 
 export async function deleteOrder(
@@ -261,16 +335,31 @@ export async function deleteOrder(
   const removingItems = await deleteAllOrderItems(number);
 
   if (!removingItems.ok) {
-    return { ok: false, status: removingItems.status };
+    return {
+      ok: false,
+      status: removingItems.status,
+      message:
+        "Houve algum erro ao remover os itens do pedido! Algum item pode ter sido excluído.",
+    };
   }
 
   const deletingOrder = file.delete(number);
 
   if (!deletingOrder.ok) {
-    return { ok: false, status: deletingOrder.status };
+    return {
+      ok: false,
+      message:
+        "Houve algum erro ao excluír o pedido! Os itens já foram removidos.",
+      status: deletingOrder.status,
+    };
   }
 
-  return { ok: true, data: deletingOrder.data };
+  return {
+    ok: true,
+    status: 200,
+    message: "Pedido excluído com sucesso!",
+    data: deletingOrder.data,
+  };
 }
 
 export async function reindexOrdersFile() {

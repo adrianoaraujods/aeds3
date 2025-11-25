@@ -28,7 +28,13 @@ export async function createProduct(
   const createdDrawings: Drawing[] = [];
 
   const parser = productDataSchema.safeParse(data);
-  if (!parser.success) return { ok: false, status: 400, data: createdDrawings };
+  if (!parser.success)
+    return {
+      ok: false,
+      status: 400,
+      message: "Dados inválidos! Verifique os dados do produto.",
+      data: createdDrawings,
+    };
 
   for (const drawing of drawings) {
     if (!drawing.isNew) continue;
@@ -39,6 +45,8 @@ export async function createProduct(
       return {
         ok: false,
         status: creatingDrawing.status,
+        message:
+          "Houve algum erro ao criar algum desenho! Pode ser que algum desenho já tenha sido criado.",
         data: createdDrawings,
       };
     }
@@ -51,7 +59,12 @@ export async function createProduct(
   const creatingProduct = file.insert(product);
 
   if (!creatingProduct.ok) {
-    return { ok: false, status: creatingProduct.status, data: createdDrawings };
+    return {
+      ok: false,
+      status: creatingProduct.status,
+      message: "Houve algum erro ao criar o produto!",
+      data: createdDrawings,
+    };
   }
 
   let failedStatus: ErrorCode | undefined;
@@ -89,14 +102,30 @@ export async function createProduct(
 
     if (!uncreatingProduct.ok) unreverted = true;
 
+    if (unreverted) {
+      return {
+        ok: false,
+        status: 509,
+        message:
+          "Houve algum erro ao criar o produto! O produto foi parcialmente criado, isso pode gerar inconsistências.",
+        data: createdDrawings,
+      };
+    }
+
     return {
       ok: false,
-      status: unreverted ? 509 : failedStatus,
+      status: failedStatus,
+      message: "Houve algum erro ao criar o produto!",
       data: createdDrawings,
     };
   }
 
-  return { ok: true, data: { ...creatingProduct.data, drawings } };
+  return {
+    ok: true,
+    status: 201,
+    message: "Produto criado com sucesso!",
+    data: { ...creatingProduct.data, drawings },
+  };
 }
 
 export async function getProduct(id: number): Promise<ActionResponse<Product>> {
@@ -108,14 +137,27 @@ export async function getProductData(
 ): Promise<ActionResponse<ProductData>> {
   const findingProduct = file.findBy("id", id);
 
-  if (!findingProduct.ok) return { ok: false, status: findingProduct.status };
+  if (!findingProduct.ok)
+    return {
+      ok: false,
+      status: findingProduct.status,
+      message: "Produto não encontrado!",
+    };
 
   const retrievingDrawings = await getProductDrawings(findingProduct.data.id);
 
-  if (!retrievingDrawings.ok) return { ok: false, status: 509 };
+  if (!retrievingDrawings.ok)
+    return {
+      ok: false,
+      status: 509,
+      message:
+        "Produto não encontrado! Pode ser que existam dados corrompidos.",
+    };
 
   return {
     ok: true,
+    status: 200,
+    message: "Produto recuperado com sucesso!",
     data: { ...findingProduct.data, drawings: retrievingDrawings.data },
   };
 }
@@ -128,7 +170,12 @@ export async function getAllProducts(): Promise<
   const retrievingProducts = file.getAll();
 
   if (!retrievingProducts.ok) {
-    return { ok: false, status: retrievingProducts.status, data: products };
+    return {
+      ok: false,
+      status: retrievingProducts.status,
+      message: "Houve algum erro ao carregar os produtos!",
+      data: products,
+    };
   }
 
   let failedStatus: ErrorCode | undefined;
@@ -146,10 +193,20 @@ export async function getAllProducts(): Promise<
   }
 
   if (failedStatus) {
-    return { ok: false, status: failedStatus, data: products };
+    return {
+      ok: false,
+      status: failedStatus,
+      message: "Houve algum erro ao carregar algum desenho dos produtos!",
+      data: products,
+    };
   }
 
-  return { ok: true, data: products };
+  return {
+    ok: true,
+    status: 200,
+    message: "Produtos carregados com sucesso!",
+    data: products,
+  };
 }
 
 export async function updateProduct(
@@ -160,13 +217,20 @@ export async function updateProduct(
   const createdDrawings: Drawing[] = [];
 
   const parser = productDataSchema.safeParse(data);
-  if (!parser.success) return { ok: false, status: 400, data: createdDrawings };
+  if (!parser.success)
+    return {
+      ok: false,
+      status: 400,
+      message: "Dados inválidos! Verifique os dados do produto.",
+      data: createdDrawings,
+    };
 
   const retrievingOldDrawings = await getProductDrawings(product.id);
   if (!retrievingOldDrawings.ok) {
     return {
       ok: false,
       status: retrievingOldDrawings.status,
+      message: "Houve algum erro ao carregar os desenhos do produto.",
       data: createdDrawings,
     };
   }
@@ -188,6 +252,8 @@ export async function updateProduct(
       return {
         ok: false,
         status: creatingDrawing.status,
+        message:
+          "Houve algum erro ao criar um desenho do produto! Pode ser que outros desenhos tenham sido criados.",
         data: createdDrawings,
       };
     }
@@ -203,12 +269,20 @@ export async function updateProduct(
       );
 
       if (!uncreatingDrawing.ok) {
-        return { ok: false, status: 509, data: createdDrawings };
+        return {
+          ok: false,
+          status: 509,
+          message:
+            "Houve algum erro ao modificar o produto! Pode ser que alguns desenhos tenha sido adicionados.",
+          data: createdDrawings,
+        };
       }
 
       return {
         ok: false,
         status: creatingRelation.status,
+        message:
+          "Houve algum erro ao modificar o produto! Nenhuma alteração foi feita.",
         data: createdDrawings,
       };
     }
@@ -222,11 +296,17 @@ export async function updateProduct(
     return {
       ok: false,
       status: updatingProduct.status,
+      message: "Houve algum erro ao modificar o produto!",
       data: createdDrawings,
     };
   }
 
-  return { ok: true, data: { ...updatingProduct.data, drawings } };
+  return {
+    ok: true,
+    status: 200,
+    message: "Produto criado com sucesso!",
+    data: { ...updatingProduct.data, drawings },
+  };
 }
 
 export async function deleteProduct(
@@ -235,24 +315,47 @@ export async function deleteProduct(
   const retrievingOrderItems = await getProductOrders(id);
 
   if (!retrievingOrderItems.ok) {
-    return { ok: false, status: retrievingOrderItems.status };
+    return {
+      ok: false,
+      status: retrievingOrderItems.status,
+      message:
+        "Houve algum erro ao procurar pedidos com esse produto. Nenhuma alteração foi feita.",
+    };
   }
 
   if (retrievingOrderItems.data.length) {
-    return { ok: false, status: 409 };
+    return {
+      ok: false,
+      status: 409,
+      message: "Não é permitido excluir um produto que está em algum pedido.",
+    };
   }
 
   const removingDrawings = await removeAllProductDrawings(id);
 
   if (!removingDrawings.ok) {
-    return { ok: false, status: removingDrawings.status };
+    return {
+      ok: false,
+      status: removingDrawings.status,
+      message: "Houve algum erro ao remover algum desenho do produto.",
+    };
   }
 
   const deletingProduct = file.delete(id);
 
-  if (!deletingProduct.ok) return { ok: false, status: deletingProduct.status };
+  if (!deletingProduct.ok)
+    return {
+      ok: false,
+      status: deletingProduct.status,
+      message: "Houve algum erro ao excluír o produto.",
+    };
 
-  return { ok: true, data: deletingProduct.data };
+  return {
+    ok: true,
+    status: 200,
+    message: "Produto excluído com sucesso!",
+    data: deletingProduct.data,
+  };
 }
 
 export async function reindexProductsFile() {

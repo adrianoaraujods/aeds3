@@ -62,7 +62,13 @@ export class File<
 
     const parser = schema.safeParse(data);
 
-    if (!parser.success) return { ok: false, status: 400 };
+    if (!parser.success) {
+      return {
+        ok: false,
+        status: 400,
+        message: "Dados inválidos! Não foi possível criar o registro.",
+      };
+    }
 
     try {
       for (const uniqueField of this.uniqueFields) {
@@ -72,7 +78,13 @@ export class File<
           parser.data[String(uniqueField)]
         );
 
-        if (dataOffset !== null) return { ok: false, status: 409 };
+        if (dataOffset !== null) {
+          return {
+            ok: false,
+            status: 409,
+            message: `Um registro com ${String(uniqueField)}=${parser.data[String(uniqueField)]} já existe! Não foi possível modificar o registro.`,
+          };
+        }
       }
 
       const record = {
@@ -86,12 +98,22 @@ export class File<
         this.indexes[indexKey]!.insert(record[indexKey], recordOffset);
       }
 
-      return { ok: true, status: 201, data: record };
+      return {
+        ok: true,
+        status: 201,
+        message: "Registro criado com sucesso!",
+        data: record,
+      };
     } catch (error) {
       console.error(error);
     }
 
-    return { ok: false, status: 500 };
+    return {
+      ok: false,
+      status: 500,
+      message:
+        "Houve algum erro inesperado! Não foi possível criar o registro.",
+    };
   }
 
   public delete(
@@ -99,10 +121,23 @@ export class File<
   ): ActionResponse<z.infer<Schema>> {
     try {
       const recordOffset = this.indexes[this.primaryKey]!.find(key);
-      if (!recordOffset) return { ok: false, status: 404 };
+      if (!recordOffset) {
+        return {
+          ok: false,
+          status: 404,
+          message: "O registro não foi encontrado!",
+        };
+      }
 
       const record = this.retrieve(recordOffset);
-      if (!record) return { ok: false, status: 404 };
+      if (!record) {
+        return {
+          ok: false,
+          status: 509,
+          message:
+            "O registro não foi encontrado! Provavelmente existem dados corrompidos.",
+        };
+      }
 
       this.invalidate(recordOffset);
 
@@ -110,18 +145,34 @@ export class File<
         this.indexes[indexKey]!.delete(record[indexKey]);
       }
 
-      return { ok: true, status: 200, data: record };
+      return {
+        ok: true,
+        status: 200,
+        message: "Registro excluído com sucesso!",
+        data: record,
+      };
     } catch (error) {
       console.error(error);
     }
 
-    return { ok: false, status: 500 };
+    return {
+      ok: false,
+      status: 500,
+      message:
+        "Houve algum erro inesperado! Não foi possível excluir o registro.",
+    };
   }
 
   public update(data: z.infer<Schema>): ActionResponse<z.infer<Schema>> {
     const parser = this.schema.safeParse(data);
 
-    if (!parser.success) return { ok: false, status: 400 };
+    if (!parser.success) {
+      return {
+        ok: false,
+        status: 400,
+        message: "Dados inválidos! Não foi possível modificar o registro.",
+      };
+    }
 
     const updatedRecord = parser.data as z.infer<Schema>;
 
@@ -141,7 +192,13 @@ export class File<
           updatedRecord[uniqueField]
         );
 
-        if (dataOffset !== null) return { ok: false, status: 409 };
+        if (dataOffset !== null) {
+          return {
+            ok: false,
+            status: 409,
+            message: `Um registro com ${String(uniqueField)}=${parser.data[String(uniqueField)]} já existe! Não foi possível modificar o registro.`,
+          };
+        }
       }
 
       const updatedRecordOffset = this.append(data);
@@ -153,12 +210,22 @@ export class File<
         );
       }
 
-      return { ok: true, status: 200, data: updatedRecord };
+      return {
+        ok: true,
+        status: 200,
+        message: "Registro modificado com sucesso!",
+        data: updatedRecord,
+      };
     } catch (error) {
       console.error(error);
     }
 
-    return { ok: false, status: 500 };
+    return {
+      ok: false,
+      status: 500,
+      message:
+        "Houve algum erro inesperado! Não foi possível modificar o registro.",
+    };
   }
 
   public findBy<K extends keyof z.infer<Schema>>(
@@ -171,13 +238,31 @@ export class File<
       if (index) {
         const recordOffset = index.find(value);
 
-        if (recordOffset === null) return { ok: false, status: 404 };
+        if (recordOffset === null) {
+          return {
+            ok: false,
+            status: 404,
+            message: "O registro não foi encontrado!",
+          };
+        }
 
         const record = this.retrieve(recordOffset);
 
-        if (!record) return { ok: false, status: 509 };
+        if (!record) {
+          return {
+            ok: false,
+            status: 509,
+            message:
+              "O registro não foi encontrado! Provavelmente existem dados corrompidos.",
+          };
+        }
 
-        return { ok: true, status: 200, data: record };
+        return {
+          ok: true,
+          status: 200,
+          message: "Registro encontrado com sucesso!",
+          data: record,
+        };
       }
 
       // TODO: find manually
@@ -185,7 +270,12 @@ export class File<
       console.error(error);
     }
 
-    return { ok: false, status: 500 };
+    return {
+      ok: false,
+      status: 500,
+      message:
+        "Houve algum erro inesperado! Não foi possível encontrar o registro.",
+    };
   }
 
   public select<K extends keyof z.infer<Schema>>(
@@ -206,7 +296,12 @@ export class File<
           if (record) records.push(record);
         }
 
-        return { ok: true, status: 200, data: records };
+        return {
+          ok: true,
+          status: 200,
+          message: "Registro encontrado com sucesso!",
+          data: records,
+        };
       }
 
       // TODO: find manually
@@ -214,7 +309,12 @@ export class File<
       console.error(error);
     }
 
-    return { ok: false, status: 500 };
+    return {
+      ok: false,
+      status: 500,
+      message:
+        "Houve algum erro inesperado! Não foi possível encontrar o registro.",
+    };
   }
 
   public getAll(): ActionResponse<z.infer<Schema>[]> {
@@ -228,15 +328,11 @@ export class File<
 
       const records: z.infer<Schema>[] = [];
 
-      // If primaryKey is "id", the first 4 bytes are the serial counter.
-      // We skip them to start reading records.
       let offset = this.primaryKey === "id" ? 4 : 0;
 
       while (offset < fileSize) {
-        // Read metadata: 1 byte (boolean) + 4 bytes (UInt32BE length) = 5 bytes
         const metaBuffer = Buffer.alloc(5);
 
-        // Ensure we don't read past EOF
         if (offset + 5 > fileSize) break;
 
         fs.readSync(fd, metaBuffer, 0, 5, offset);
@@ -252,18 +348,27 @@ export class File<
           records.push(value);
         }
 
-        // Move offset to the next record (metadata size + data length)
         offset += 5 + dataLength;
       }
 
-      return { ok: true, status: 200, data: records };
+      return {
+        ok: true,
+        status: 200,
+        message: "Os registros foram recuperados com sucesso!",
+        data: records,
+      };
     } catch (error) {
       console.error(error);
     } finally {
       if (fd !== undefined) fs.closeSync(fd);
     }
 
-    return { ok: false, status: 500 };
+    return {
+      ok: false,
+      status: 500,
+      message:
+        "Houve algum erro inesperado! Não foi possível recuperar os registros.",
+    };
   }
 
   public reindex(): ActionResponse {
@@ -275,15 +380,11 @@ export class File<
       const stats = fs.fstatSync(fd);
       const fileSize = stats.size;
 
-      // If primaryKey is "id", the first 4 bytes are the serial counter.
-      // We skip them to start reading records.
       let offset = this.primaryKey === "id" ? 4 : 0;
 
       while (offset < fileSize) {
-        // Read metadata: 1 byte (boolean) + 4 bytes (UInt32BE length) = 5 bytes
         const metaBuffer = Buffer.alloc(5);
 
-        // Ensure we don't read past EOF
         if (offset + 5 > fileSize) break;
 
         fs.readSync(fd, metaBuffer, 0, 5, offset);
@@ -302,18 +403,27 @@ export class File<
           }
         }
 
-        // Move offset to the next record (metadata size + data length)
         offset += 5 + dataLength;
       }
 
-      return { ok: true, status: 200, data: undefined };
+      return {
+        ok: true,
+        status: 200,
+        message: "Os índices foram recriados com sucesso!",
+        data: undefined,
+      };
     } catch (error) {
       console.error(error);
     } finally {
       if (fd !== undefined) fs.closeSync(fd);
     }
 
-    return { ok: false, status: 500 };
+    return {
+      ok: false,
+      status: 500,
+      message:
+        "Houve algum erro inesperado! Não foi possível recriar os índices.",
+    };
   }
 
   private createFile() {

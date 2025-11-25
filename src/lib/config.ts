@@ -4,8 +4,8 @@ import type { LucideIcon } from "lucide-react";
 
 export const DATA_FOLDER_PATH = "./data/";
 
-type Theme = (typeof THEMES)[number];
-const THEMES = ["light", "dark", "system"] as const;
+export type Theme = (typeof THEMES)[number];
+export const THEMES = ["light", "dark", "system"] as const;
 
 type NavigationLink = {
   title: string;
@@ -31,14 +31,14 @@ type SuccessResponse<TData> = {
 type ErrorResponse<TData = void> = {
   ok: false;
   status: ErrorCode;
-  message?: string;
+  message: string;
 } & (TData extends void ? { data?: never } : { data: TData });
 
-type ActionResponse<TSuccess = void, TError = void> =
+export type ActionResponse<TSuccess = void, TError = void> =
   | SuccessResponse<TSuccess>
   | ErrorResponse<TError>;
 
-const NAVIGATION: Navigation = [
+export const NAVIGATION: Navigation = [
   {
     title: "Páginas",
     items: [
@@ -50,12 +50,3 @@ const NAVIGATION: Navigation = [
     ],
   },
 ];
-
-export {
-  NAVIGATION,
-  THEMES,
-  type ActionResponse,
-  type Navigation,
-  type NavigationLink,
-  type Theme,
-};

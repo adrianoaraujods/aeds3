@@ -68,11 +68,21 @@ export async function createBackup(
     const backupBuffer = Buffer.concat(backupFile);
     fs.writeFileSync(filePath, backupBuffer);
 
-    return { ok: true, data: undefined };
+    return {
+      ok: true,
+      status: 200,
+      message: "Backup criado com sucesso!",
+      data: undefined,
+    };
   } catch (error) {
     console.error(error);
-    return { ok: false, status: 500 };
   }
+
+  return {
+    ok: false,
+    status: 500,
+    message: "Houve algum erro inesperado! Não foi possível criar o backup.",
+  };
 }
 
 export async function loadBackup(): Promise<ActionResponse> {
@@ -128,7 +138,7 @@ export async function loadBackup(): Promise<ActionResponse> {
           ok: false,
           status: 500,
           message:
-            "Não foi possível identificar o algoritmo, provavelmente o arquivo de backup está corrompido",
+            "Não foi possível identificar o algoritmo, provavelmente o arquivo de backup está corrompido!",
         };
       }
 
@@ -139,44 +149,77 @@ export async function loadBackup(): Promise<ActionResponse> {
 
     reindexAllDataFiles();
 
-    return { ok: true, data: undefined };
+    return {
+      ok: true,
+      data: undefined,
+      status: 200,
+      message: "Backup restaurado com sucesso!",
+    };
   } catch (error) {
     console.error(error);
-    return { ok: false, status: 500 };
   }
+
+  return {
+    ok: false,
+    status: 500,
+    message:
+      "Houve algum erro inesperado! Não foi possível restaurar o backup.",
+  };
 }
 
 export async function reindexAllDataFiles(): Promise<ActionResponse> {
-  const status = await Promise.allSettled([
-    reindexClientsFile(),
-    reindexDrawingsFile(),
-    reindexOrdersFile(),
-    reindexProductsFile(),
-    reindexOrderItemsFile(),
-    reindexProductDrawingsFile(),
-  ]).then((responses) => {
-    let hasRejected = false;
-    let failedStatus: ErrorCode | undefined;
+  try {
+    const status = await Promise.allSettled([
+      reindexClientsFile(),
+      reindexDrawingsFile(),
+      reindexOrdersFile(),
+      reindexProductsFile(),
+      reindexOrderItemsFile(),
+      reindexProductDrawingsFile(),
+    ]).then((responses) => {
+      let hasRejected = false;
+      let failedStatus: ErrorCode | undefined;
 
-    for (const response of responses) {
-      if (response.status === "rejected") {
-        hasRejected = true;
-        continue;
+      for (const response of responses) {
+        if (response.status === "rejected") {
+          hasRejected = true;
+          continue;
+        }
+
+        if (!response.value.ok) {
+          failedStatus = response.value.status;
+          continue;
+        }
       }
 
-      if (!response.value.ok) {
-        failedStatus = response.value.status;
-        continue;
-      }
-    }
+      if (hasRejected) return 500;
+      if (failedStatus !== undefined) return failedStatus;
 
-    if (hasRejected) return 500;
-    if (failedStatus !== undefined) return failedStatus;
+      return 200;
+    });
 
-    return 200;
-  });
+    if (status !== 200)
+      return {
+        ok: false,
+        status,
+        message:
+          "Não foi possível reindexar os arquivos, algumas funcionalidades podem não funcionar corretamente!",
+      };
 
-  if (status !== 200) return { ok: false, status };
+    return {
+      ok: true,
+      status: 200,
+      message: "Arquivos reindexados com sucesso!",
+      data: undefined,
+    };
+  } catch (error) {
+    console.error(error);
+  }
 
-  return { ok: true, data: undefined };
+  return {
+    ok: false,
+    status: 500,
+    message:
+      "Houve algum erro inesperado! Não foi possível reindexar os arquivos, algumas funcionalidades podem não funcionar corretamente!",
+  };
 }
