@@ -37,7 +37,7 @@ Os registros de todas as tabelas se comportão da mesma maneira, quando um dado 
 
 ## 7. Descreva como o código da tabela intermediária se integra com o CRUD das tabelas principais.
 
-1. [Produto:Pedido](../src/actions/order-item.ts)
+1. [Produto:Pedido](/src/actions/order-item.ts)
 
 Ao criar um pedido, é necessário indicar quais produtos serão inclusos, então para cada item, será chamada a função `createOrderItem` da tabela intermediária.
 
@@ -49,7 +49,7 @@ Ao excluir um pedido, será chamada a função `deleteAllOrderItems` que irá ex
 
 Ao excluir um produto, é utilizada a função `getProductOrders` para recuperar todos os pedidos que incluem aquele produto. Caso ela retorne algum resultado, então a operação é abortada.
 
-2. [Produto:Desenho](../src/actions/product-drawing.ts)
+2. [Produto:Desenho](/src/actions/product-drawing.ts)
 
 Ao criar um produto, é necessário criar o desenho e seu relacionamento, ou somente o relacionamento com algum desenho já existente. Para isso, é utilizado as funções `createDrawing` e `createProductDrawing`.
 
@@ -65,6 +65,6 @@ A estrutura dos diretórios se manteve quase idêntica, o que mudou foi que ante
 
 Também foi adicionado os arquivos de CRUD das tabelas novas, eles podem ser encontrados na pasta [/src/actions/](/src/actions/).
 
-A estrutura geral do projeto pode ser encontrada no arquivo: [README.md](../README.md#estrutura-do-projeto).
+A estrutura geral do projeto pode ser encontrada no arquivo: [README.md](/README.md#estrutura-do-projeto).
 
 Não houve grandes mudanças nos módulos utilizados, mas alguns foram adicionados para os componentes do _front-end_.

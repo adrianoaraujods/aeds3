@@ -66,7 +66,7 @@ Nesse sistema, todos os dados seriam igualmente sensíveis. Por isso, foi escolh
 
 ## 6. Descreva como o RSA foi implementado no projeto.
 
-A implementação do algoritmo RSA, juntamente com a criação das chaves, pode ser encontrada no arquivo: [rsa.ts](../src/lib/rsa.ts)
+A implementação do algoritmo RSA, juntamente com a criação das chaves, pode ser encontrada no arquivo: [rsa.ts](/src/lib/rsa.ts)
 
 - **a. Estrutura das chaves pública e privada:** As chaves são constituídas de dois `BigInt` seguindo a seguinte estrutura:
 
@@ -75,11 +75,11 @@ type PublicKey = { e: bigint; n: bigint };
 type PrivateKey = { d: bigint; n: bigint };
 ```
 
-- **b. Como e onde foram armazenadas:** Elas são geradas automáticamente na primeira vez que o aplicativo é aberto. O arquivo [keys.ts](../src/actions/keys.ts) é responsável por armazenar as chaves, que são salvas no arquivo [.env](../.env) como uma 3 strings distintas.
-- **c. Como foram carregadas pelo sistema:** Elas são carregadas como variáveis de ambiente utilizando a sintaxe: `process.env["label"]`. O arquivo [keys.ts](../src/actions/keys.ts) também é responsável por recuperá-las.
+- **b. Como e onde foram armazenadas:** Elas são geradas automáticamente na primeira vez que o aplicativo é aberto. O arquivo [keys.ts](/src/actions/keys.ts) é responsável por armazenar as chaves, que são salvas no arquivo [.env](/.env) como uma 3 strings distintas.
+- **c. Como foram carregadas pelo sistema:** Elas são carregadas como variáveis de ambiente utilizando a sintaxe: `process.env["label"]`. O arquivo [keys.ts](/src/actions/keys.ts) também é responsável por recuperá-las.
 - **d. Tamanho das chaves escolhidas e justificativa:** Cada chave e composta de dois primos com 512 bits, portanto 1024 bits no total. Esse tamanho foi escolhido devido a velocidade de criação das mesmas, o tempo necessário para gerar esses primos é quase instantâneo, mas ainda assim é desejável que seja o maior possível.
-- **e. Em qual momento a criptografia do(s) campo(s) ocorre (no CRUD).:** A criptografia acontece depois da validação dos formulários mas logo antes de serializar os dados para serem salvos. Apenas nas operações de "Create" e "Update" que é necessário criptografar o campo. Toda essa lógica está contida no arquivo [order.ts](../src/actions/order.ts).
-- **f. Em qual momento ocorre a descriptografia:** A descriptografia acontece depois de recuperar os dados e antes de retornar o valor nas funções de "Read". Toda essa lógica está contida no arquivo [order.ts](../src/actions/order-item.ts).
+- **e. Em qual momento a criptografia do(s) campo(s) ocorre (no CRUD).:** A criptografia acontece depois da validação dos formulários mas logo antes de serializar os dados para serem salvos. Apenas nas operações de "Create" e "Update" que é necessário criptografar o campo. Toda essa lógica está contida no arquivo [order.ts](/src/actions/order.ts).
+- **f. Em qual momento ocorre a descriptografia:** A descriptografia acontece depois de recuperar os dados e antes de retornar o valor nas funções de "Read". Toda essa lógica está contida no arquivo [order.ts](/src/actions/order-item.ts).
 - **g. Conversões realizadas (ex.: string $\to$ bytes $\to$ blocos):** Foi necessário várias conversões para o algoritmo e também para o armazenamento e recuperação correta dos dados. As conversões foram:
   - **String(UTF-8) $\to$ BigInt:** durante a encriptação.
   - **BigInt $\to$ String(Hex):** para armazenar do valor encriptado.
@@ -87,4 +87,4 @@ type PrivateKey = { d: bigint; n: bigint };
   - **BigInt $\to$ String(UTF-8):** durante a desencriptação.
   - **String(UTF-8) $\to$ Number:** para transformar no valor final (preço de item de pedido).
 
-Essas conversões estão nos arquivos: [rsa.ts](../src/lib/rsa.ts) e [buffer.ts](../src/lib/buffer.ts)
+Essas conversões estão nos arquivos: [rsa.ts](/src/lib/rsa.ts) e [buffer.ts](/src/lib/buffer.ts)

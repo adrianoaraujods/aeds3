@@ -33,21 +33,30 @@ npm run build && npm run start
 📁 docs/                        %% Pasta com os artefatos da documentação
 📁 src/                         %% Pasta com o código fonte
 ├── 📁 actions/                 %% Pasta com Server Actions
-│   ├── 📄 file.ts              %% Implementação genérica para salvar os registros
+│   ├── 📄 backup.ts            %% Funções para gerenciar os backups comprimidos
 │   ├── 📄 client.ts            %% CRUD Clientes
 │   ├── 📄 drawing.ts           %% CRUD Desenhos
+│   ├── 📄 keys.ts              %% Funções para gerenciar as chaves do algoritmo RLA
 │   ├── 📄 order-item.ts        %% CRUD Itens Pedido
 │   ├── 📄 order.ts             %% CRUD Pedido
 │   ├── 📄 product-drawing.ts   %% CRUD Tabela intermediária, Produtos-Desenhos
-│   └── 📄 product.ts           %% CRUD Produtos
+│   ├── 📄 product.ts           %% CRUD Produtos
+│   └── 📄 record-file.ts       %% Implementação genérica para salvar os registros
 │
 ├── 📁 app/             %% Pasta das rotas
 ├── 📁 components/      %% Pasta dos componentes
 ├── 📁 hooks/           %% Pasta para React Hooks
 ├── 📁 lib/             %% Pasta para bibliotecas e configurações
 │   ├── 📄 bp-tree.ts   %% Implementação da árvore B+
+│   ├── 📄 config.ts    %% Arquivos com configurações da aplicação
 │   ├── 📄 buffer.ts    %% Implementação da funções de serialização
-│   └── 📄 schemas.ts   %% Definições dos registros
+│   ├── 📄 huffman.ts   %% Implementação do algoritmo Huffman
+│   ├── 📄 lzw.ts       %% Implementação do algoritmo LZW
+│   ├── 📄 math.ts      %% Funções matemáticas auxiliares ao algoritmo RLA
+│   ├── 📄 queue.ts     %% Implementação de uma fila simples utilizada no Huffman
+│   └── 📄 utils.ts     %% Funções auxiliares
+│
+├── 📁 schemas/           %% Pasta com as definições dos registros
 │
 └── 📁 styles/   %% Pasta com todos os arquivos CSS
 
@@ -74,3 +83,4 @@ Um cliente pode fazer vários pedidos de compra, e cada pedido deve estar associ
 
 - [Formulário 1 (Fase II)](./docs/formulário-1.md)
 - [Formulário 2 (Fase III)](./docs/formulário-2.md)
+- [Formulário 3 (Fase III)](./docs/formulário-3.md)

@@ -76,4 +76,4 @@ Quando o valor de um registro que está indexado é atualizado, então o nó é 
 
 O projeto foi feito utilizando o [Next.js](https://nextjs.org) como _framework_, juntamente com [TypeScript](https://www.typescriptlang.org) e [Zod](https://zod.dev) para garantir _type safety_ e [Tailwind CSS](https://tailwindcss.com) para a estilização.
 
-A estrutura das pastas pode ser encontrada no arquivo: [README.md](../README.md#estrutura-do-projeto)
+A estrutura das pastas pode ser encontrada no arquivo: [README.md](/README.md#estrutura-do-projeto)
