@@ -10,10 +10,10 @@ import type { PrivateKey, PublicKey } from "@/lib/rsa";
 export async function loadKeys(): Promise<ActionResponse> {
   try {
     if (
-      !process.env.PRIVATE_KEY_D ||
-      !process.env.PRIVATE_KEY_N ||
-      !process.env.PUBLIC_KEY_E ||
-      !process.env.PUBLIC_KEY_N
+      !process.env.RLA_D ||
+      !process.env.RLA_N ||
+      !process.env.RLA_E ||
+      !process.env.RLA_N
     ) {
       createKeys();
 
@@ -44,15 +44,15 @@ export async function loadKeys(): Promise<ActionResponse> {
 
 export async function getPublicKey(): Promise<PublicKey> {
   return {
-    e: BigInt(process.env.PUBLIC_KEY_E!),
-    n: BigInt(process.env.PUBLIC_KEY_N!),
+    e: BigInt(process.env.RLA_E!),
+    n: BigInt(process.env.RLA_N!),
   };
 }
 
 export async function getPrivateKey(): Promise<PrivateKey> {
   return {
-    d: BigInt(process.env.PRIVATE_KEY_D!),
-    n: BigInt(process.env.PRIVATE_KEY_N!),
+    d: BigInt(process.env.RLA_D!),
+    n: BigInt(process.env.RLA_N!),
   };
 }
 
@@ -61,10 +61,9 @@ export async function createKeys(): Promise<ActionResponse> {
     const { privateKey, publicKey } = RSA.generateKeys();
 
     const file =
-      `PRIVATE_KEY_D="${privateKey.d}"\n` +
-      `PRIVATE_KEY_N="${privateKey.n}"\n` +
-      `PUBLIC_KEY_E="${publicKey.e}"\n` +
-      `PUBLIC_KEY_N="${publicKey.n}"\n`;
+      `RLA_D="${privateKey.d}"\n` +
+      `RLA_N="${privateKey.n}"\n` +
+      `RLA_E="${publicKey.e}"\n`;
 
     fs.writeFileSync("./.env", file);
 
