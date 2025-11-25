@@ -6,7 +6,6 @@ import Link from "next/link";
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { toast } from "sonner";
 
-import { useData } from "@/hooks/use-data";
 import { deleteProduct } from "@/actions/product";
 import { DataTable } from "@/components/table/data-table";
 import { Text } from "@/components/typography/text";
@@ -34,9 +33,7 @@ import { EllipsisIcon, EyeIcon, Trash2Icon } from "lucide-react";
 
 import type { ProductData } from "@/schemas/product";
 
-export function ProductsTable() {
-  const { data } = useData();
-
+export function ProductsTable({ products }: { products: ProductData[] }) {
   const table = useReactTable<ProductData>({
     columns: [
       { accessorKey: "code", header: "Código" },
@@ -72,7 +69,7 @@ export function ProductsTable() {
         cell: ({ row }) => <ProductTableRowMenu product={row.original} />,
       },
     ],
-    data: data.products,
+    data: products,
     getCoreRowModel: getCoreRowModel(),
   });
 
@@ -80,37 +77,20 @@ export function ProductsTable() {
 }
 
 function ProductTableRowMenu({ product }: { product: ProductData }) {
-  const { setData } = useData();
-
   async function handleDelete() {
-    const res = await deleteProduct(product.id);
+    const deletingProduct = await deleteProduct(product.id);
 
-    if (res.ok) {
-      setData((prev) => ({
-        ...prev,
-        products: prev.products.filter(({ id }) => id !== product.id),
-      }));
-
-      toast.success("Produto deletado com sucesso!");
+    if (deletingProduct.ok) {
+      toast.success(deletingProduct.message);
       return;
     }
 
-    switch (res.status) {
-      case 409:
-        toast.warning(
-          "Não é possível excluir um produto com outros registros."
-        );
-        break;
-      case 500:
-        toast.error(
-          "Erro interno do servidor. Não foi possível excluir o produto, tente novamente."
-        );
-        break;
-      default:
-        toast.error(
-          "Existem dados corrompidos no Banco de Dados. Não foi possível excluir o produto."
-        );
+    if (deletingProduct.status < 500) {
+      toast.warning(deletingProduct.message);
+      return;
     }
+
+    toast.error(deletingProduct.message);
   }
 
   return (

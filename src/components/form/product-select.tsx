@@ -4,9 +4,8 @@ import * as React from "react";
 
 import { toast } from "sonner";
 
-import { useData } from "@/hooks/use-data";
 import { cn } from "@/lib/utils";
-import { getProductData } from "@/actions/product";
+import { getAllProducts } from "@/actions/product";
 import { Text } from "@/components/typography/text";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,9 +21,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ProductData } from "@/schemas/product";
 
 import { CheckIcon, ChevronsUpDownIcon } from "lucide-react";
+
+import type { ProductData } from "@/schemas/product";
 
 export function ProductSelect({
   product,
@@ -35,10 +35,25 @@ export function ProductSelect({
   product: Omit<ProductData, "drawings">;
   setProduct: (product: ProductData) => void;
 }) {
+  const [products, setProducts] = React.useState<ProductData[]>([]);
   const [isOpen, setIsOpen] = React.useState(false);
-  const {
-    data: { products },
-  } = useData();
+
+  React.useEffect(() => {
+    getAllProducts().then((res) => {
+      if (!res.ok) {
+        toast.error(res.message);
+      }
+
+      setProducts(res.data);
+    });
+  }, []);
+
+  async function handleSelect(productId: ProductData["id"]) {
+    const client: ProductData = products.find(({ id }) => id === productId)!;
+
+    setProduct(client);
+    setIsOpen(false);
+  }
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -67,17 +82,7 @@ export function ProductSelect({
                 <CommandItem
                   key={id}
                   value={`${code} ${description}`}
-                  onSelect={async () => {
-                    const res = await getProductData(id);
-
-                    if (!res.ok) {
-                      toast.error("Houve algum erro ao carregar o produto.");
-                      return;
-                    }
-
-                    setProduct(res.data);
-                    setIsOpen(false);
-                  }}
+                  onSelect={() => handleSelect(id)}
                 >
                   <Text>
                     {code} | {description}

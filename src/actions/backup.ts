@@ -8,9 +8,14 @@ import { DATA_FOLDER_PATH } from "@/lib/config";
 import { Huffman } from "@/lib/huffman";
 import { LZW } from "@/lib/lzw";
 import { formatTime } from "@/lib/utils";
-import { reindexAllDataFiles } from "@/actions/data";
+import { reindexClientsFile } from "@/actions/client";
+import { reindexDrawingsFile } from "@/actions/drawing";
+import { reindexOrdersFile } from "@/actions/order";
+import { reindexOrderItemsFile } from "@/actions/order-item";
+import { reindexProductsFile } from "@/actions/product";
+import { reindexProductDrawingsFile } from "@/actions/product-drawing";
 
-import type { ActionResponse } from "@/lib/config";
+import type { ActionResponse, ErrorCode } from "@/lib/config";
 
 type CompressionAlgorithm = "huffman" | "lzw";
 
@@ -139,4 +144,39 @@ export async function loadBackup(): Promise<ActionResponse> {
     console.error(error);
     return { ok: false, status: 500 };
   }
+}
+
+export async function reindexAllDataFiles(): Promise<ActionResponse> {
+  const status = await Promise.allSettled([
+    reindexClientsFile(),
+    reindexDrawingsFile(),
+    reindexOrdersFile(),
+    reindexProductsFile(),
+    reindexOrderItemsFile(),
+    reindexProductDrawingsFile(),
+  ]).then((responses) => {
+    let hasRejected = false;
+    let failedStatus: ErrorCode | undefined;
+
+    for (const response of responses) {
+      if (response.status === "rejected") {
+        hasRejected = true;
+        continue;
+      }
+
+      if (!response.value.ok) {
+        failedStatus = response.value.status;
+        continue;
+      }
+    }
+
+    if (hasRejected) return 500;
+    if (failedStatus !== undefined) return failedStatus;
+
+    return 200;
+  });
+
+  if (status !== 200) return { ok: false, status };
+
+  return { ok: true, data: undefined };
 }

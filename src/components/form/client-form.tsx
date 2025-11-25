@@ -7,7 +7,6 @@ import { revalidateLogic } from "@tanstack/react-form";
 import { toast } from "sonner";
 
 import { useAppForm } from "@/hooks/use-app-form";
-import { useData } from "@/hooks/use-data";
 import { createClient, updateClient } from "@/actions/client";
 import { Heading } from "@/components/typography/heading";
 import { Button } from "@/components/ui/button";
@@ -34,8 +33,6 @@ export function ClientForm({
   canEdit,
   setCanEdit,
 }: ClientFormProps) {
-  const { setData } = useData();
-
   const form = useAppForm({
     defaultValues: initialValues,
     validationLogic: revalidateLogic({ modeAfterSubmission: "blur" }),
@@ -50,95 +47,55 @@ export function ClientForm({
   });
 
   async function handleCreate(client: ClientData) {
-    const res = await createClient(client);
+    const creatingClient = await createClient(client);
 
-    if (res.ok) {
-      setData((prev) => ({
-        ...prev,
-        clients: [...prev.clients, res.data],
-      }));
+    if (creatingClient.ok) {
+      const newClient = creatingClient.data;
 
-      toast.success("Cliente criado com sucesso!", {
+      toast.success(creatingClient.message, {
         action: (
           <Button className="ml-auto" variant="outline" asChild>
-            <Link href={`/clientes/${res.data.id}`}>Abrir</Link>
+            <Link href={`/clientes/${newClient.id}`}>Abrir</Link>
           </Button>
         ),
       });
 
       form.reset();
-
       return;
     }
 
-    switch (res.status) {
-      case 400:
-        toast.warning(
-          "Não foi possível salvar o cliente. Confira os dados do cliente."
-        );
-        break;
-      case 409:
-        toast.warning("Esse cliente já existe.");
-        break;
-      default:
-        toast.error(
-          "Erro interno do servidor. Não foi possível salvar o cliente, tente novamente."
-        );
-        break;
+    if (creatingClient.status < 500) {
+      toast.warning(creatingClient.message);
+      return;
     }
+
+    toast.error(creatingClient.message, {
+      action: (
+        <Button onClick={() => handleCreate(client)}>Tente novamente</Button>
+      ),
+    });
   }
 
   async function handleEdit(client: Client) {
-    const res = await updateClient(client);
+    const updatingClient = await updateClient(client);
 
-    if (res.ok) {
-      setData((prev) => {
-        const clients = [...prev.clients];
+    if (updatingClient.ok) {
+      toast.success(updatingClient.message);
 
-        for (let i = 0; i < clients.length; i++) {
-          if (clients[i].id === initialValues.id) {
-            clients[i] = res.data;
-            break;
-          }
-        }
-
-        return { ...prev, clients };
-      });
-
-      if (setCanEdit) {
-        setCanEdit(false);
-      }
-
-      toast.success("Cliente modificado com sucesso!");
-
+      if (setCanEdit) setCanEdit(false);
       return;
     }
 
-    switch (res.status) {
-      case 400:
-        toast.warning(
-          "Não foi possível salvar o cliente. Confira os dados do cliente."
-        );
-        break;
-      case 404:
-        toast.warning("Esse cliente não foi encontrado.");
-        break;
-      case 409:
-        toast.warning("Já existe algum cliente com esses dados.");
-        break;
-      default:
-        toast.error(
-          "Erro interno do servidor. Não foi possível salvar o cliente.",
-          {
-            action: (
-              <Button onClick={() => handleEdit(client)}>
-                Tente novamente
-              </Button>
-            ),
-          }
-        );
-        break;
+    if (updatingClient.status < 500) {
+      toast.warning(updatingClient.message);
+      return;
     }
+
+    toast.error(updatingClient.message, {
+      action: (
+        <Button onClick={() => handleEdit(client)}>Tente novamente</Button>
+      ),
+    });
   }
 
   return (

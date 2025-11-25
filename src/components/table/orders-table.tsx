@@ -6,7 +6,6 @@ import Link from "next/link";
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { toast } from "sonner";
 
-import { useData } from "@/hooks/use-data";
 import { formatDate, formatMoney } from "@/lib/utils";
 import { deleteOrder } from "@/actions/order";
 import { DataTable } from "@/components/table/data-table";
@@ -30,22 +29,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Client } from "@/schemas/client";
-import { Order } from "@/schemas/order";
 
 import { EllipsisIcon, EyeIcon, Trash2Icon } from "lucide-react";
 
-export function OrdersTable() {
-  const { data } = useData();
+import type { ClientData } from "@/schemas/client";
+import type { OrderData } from "@/schemas/order";
 
-  const table = useReactTable<Order>({
+export function OrdersTable({ orders }: { orders: OrderData[] }) {
+  const table = useReactTable<OrderData>({
     columns: [
       { accessorKey: "number", header: "Número" },
       {
         accessorKey: "clientId",
         header: "Cliente",
         cell: ({ row }) => (
-          <OrderTableClientCell clientId={row.original.clientId} />
+          <OrderTableClientCell client={row.original.client} />
         ),
       },
       {
@@ -65,43 +63,27 @@ export function OrdersTable() {
         cell: ({ row }) => <OrderTableRowMenu order={row.original} />,
       },
     ],
-    data: data.orders,
+    data: orders,
     getCoreRowModel: getCoreRowModel(),
   });
 
   return <DataTable table={table} />;
 }
 
-function OrderTableRowMenu({ order }: { order: Order }) {
-  const { setData } = useData();
-
+function OrderTableRowMenu({ order }: { order: OrderData }) {
   async function handleDelete() {
-    const res = await deleteOrder(order.number);
+    const deletingOrder = await deleteOrder(order.number);
 
-    if (res.ok) {
-      setData((prev) => ({
-        ...prev,
-        orders: prev.orders.filter(({ number }) => number !== order.number),
-      }));
-
-      toast.success("Pedido deletado com sucesso!");
+    if (deletingOrder.ok) {
+      toast.success(deletingOrder.message);
       return;
     }
 
-    switch (res.status) {
-      case 409:
-        toast.warning("Não é possível excluir um pedido com outros registros.");
-        break;
-      case 500:
-        toast.error(
-          "Erro interno do servidor. Não foi possível excluir o pedido, tente novamente."
-        );
-        break;
-      default:
-        toast.error(
-          "Existem dados corrompidos no Banco de Dados. Não foi possível excluir o pedido."
-        );
+    if (deletingOrder.status < 500) {
+      toast.warning(deletingOrder.message);
     }
+
+    toast.error(deletingOrder.message);
   }
 
   return (
@@ -154,22 +136,10 @@ function OrderTableRowMenu({ order }: { order: Order }) {
   );
 }
 
-function OrderTableClientCell({ clientId }: { clientId: Client["id"] }) {
-  const { data } = useData();
-
-  const client = React.useMemo(() => {
-    const client = data.clients.find(({ id }) => id === clientId);
-
-    if (!client) {
-      toast.warning(`Falha ao carregar o cliente de id: ${clientId}`);
-    }
-
-    return client;
-  }, [data, clientId]);
-
+function OrderTableClientCell({ client }: { client: ClientData }) {
   return (
-    <Link href={`clientes/${clientId}`} target="_blank">
-      {!client ? clientId : client.name}
+    <Link href={`clientes/${client.id}`} target="_blank">
+      {client.name}
     </Link>
   );
 }

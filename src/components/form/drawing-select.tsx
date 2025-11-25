@@ -4,9 +4,8 @@ import * as React from "react";
 
 import { toast } from "sonner";
 
-import { useData } from "@/hooks/use-data";
 import { cn } from "@/lib/utils";
-import { getDrawing } from "@/actions/drawing";
+import { getAllDrawings } from "@/actions/drawing";
 import { Text } from "@/components/typography/text";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,12 +34,30 @@ export function DrawingSelect({
   ...props
 }: React.ComponentProps<typeof Button> & {
   drawing: DrawingData;
-  setDrawing: React.Dispatch<React.SetStateAction<DrawingData>>;
+  setDrawing: (client: DrawingData) => void;
 }) {
+  const [drawings, setDrawings] = React.useState<DrawingData[]>([]);
   const [isOpen, setIsOpen] = React.useState(false);
-  const {
-    data: { drawings },
-  } = useData();
+
+  React.useEffect(() => {
+    getAllDrawings().then((res) => {
+      if (!res.ok) {
+        toast.error(res.message);
+        return;
+      }
+
+      setDrawings(res.data);
+    });
+  }, []);
+
+  async function handleSelect(drawingNumber: DrawingData["number"]) {
+    const drawing: DrawingData = drawings.find(
+      ({ number }) => number === drawingNumber
+    )!;
+
+    setDrawing(drawing);
+    setIsOpen(false);
+  }
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -86,17 +103,7 @@ export function DrawingSelect({
                 <CommandItem
                   key={number}
                   value={number}
-                  onSelect={async () => {
-                    const res = await getDrawing(number);
-
-                    if (!res.ok) {
-                      toast.error("Houve algum erro ao carregar o desenho.");
-                      return;
-                    }
-
-                    setDrawing({ ...res.data, isNew: false });
-                    setIsOpen(false);
-                  }}
+                  onSelect={() => handleSelect(number)}
                 >
                   <Text>{number}</Text>
 

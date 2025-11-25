@@ -1,6 +1,7 @@
 "use server";
 
 import { RSA } from "@/lib/rsa";
+import { getClient } from "@/actions/client";
 import { File } from "@/actions/file";
 import { getPublicKey } from "@/actions/keys";
 import {
@@ -91,18 +92,35 @@ export async function getOrderData(
   number: Order["number"]
 ): Promise<ActionResponse<OrderData>> {
   const findingOrder = file.findBy("number", number);
-
-  if (!findingOrder.ok) return { ok: false, status: findingOrder.status };
+  if (!findingOrder.ok) return findingOrder;
 
   const order = findingOrder.data;
 
   const retrievingOrderItems = await getOrderItems(order.number);
-
-  if (!retrievingOrderItems.ok) return { ok: false, status: 509 };
+  if (!retrievingOrderItems.ok) {
+    return {
+      ok: false,
+      status: 509,
+      message:
+        "Não foi possível recuperar os itens do pedido. Existem dados corrompidos no banco de dados.",
+    };
+  }
 
   const items = retrievingOrderItems.data;
 
-  return { ok: true, data: { ...order, items } };
+  const retrievingClient = await getClient(order.clientId);
+  if (!retrievingClient.ok) {
+    return {
+      ok: false,
+      status: 509,
+      message:
+        "Não foi possível recuperar o cliente do pedido. Existem dados corrompidos no banco de dados.",
+    };
+  }
+
+  const client = retrievingClient.data;
+
+  return { ok: true, data: { ...order, items, client } };
 }
 
 export async function getAllOrders(): Promise<
@@ -119,15 +137,23 @@ export async function getAllOrders(): Promise<
   let failedStatus: ErrorCode | undefined;
 
   for (const order of retrievingOrders.data) {
-    const retrievingOrderItems = await getOrderItems(order.number);
+    const retrievingClient = await getClient(order.clientId);
+    if (!retrievingClient.ok) {
+      failedStatus = retrievingClient.status;
+      continue;
+    }
 
-    const items = retrievingOrderItems.data;
+    const client = retrievingClient.data;
+
+    const retrievingOrderItems = await getOrderItems(order.number);
 
     if (!retrievingOrderItems.ok) {
       failedStatus = retrievingOrderItems.status;
     }
 
-    orders.push({ ...order, items });
+    const items = retrievingOrderItems.data;
+
+    orders.push({ ...order, items, client });
   }
 
   if (failedStatus) {
@@ -148,7 +174,11 @@ export async function updateOrder(
     return { ok: false, status: 400, data: createdItems };
   }
 
-  const { items, ...order } = parser.data;
+  const {
+    items,
+    client: { id: clientId },
+    ...order
+  } = parser.data;
 
   const retrievingOldItems = await getOrderItems(order.number);
 
@@ -212,7 +242,7 @@ export async function updateOrder(
     }
   }
 
-  const updatingOrder = file.update(order);
+  const updatingOrder = file.update({ ...order, clientId });
 
   if (!updatingOrder.ok) {
     return {

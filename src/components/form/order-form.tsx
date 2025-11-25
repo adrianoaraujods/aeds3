@@ -7,7 +7,6 @@ import { revalidateLogic } from "@tanstack/react-form";
 import { toast } from "sonner";
 
 import { useAppForm } from "@/hooks/use-app-form";
-import { useData } from "@/hooks/use-data";
 import { createOrder, updateOrder } from "@/actions/order";
 import { ClientSelect } from "@/components/form/client-select";
 import { ProductSelect } from "@/components/form/product-select";
@@ -36,8 +35,6 @@ export function OrderForm({
   canEdit,
   setCanEdit,
 }: OrderFormProps) {
-  const { setData } = useData();
-
   const [selectedProduct, setSelectedProduct] =
     React.useState<ProductData>(DEFAULT_PRODUCT);
 
@@ -45,9 +42,6 @@ export function OrderForm({
     defaultValues: initialValues,
     validationLogic: revalidateLogic({ mode: "blur" }),
     validators: { onDynamic: orderDataSchema },
-    onSubmitInvalid: ({ formApi }) => {
-      console.log(formApi.getAllErrors());
-    },
     onSubmit: async ({ value }) => {
       if (type === "create") {
         handleCreate(value);
@@ -60,18 +54,15 @@ export function OrderForm({
   });
 
   async function handleCreate(order: OrderData) {
-    const res = await createOrder(order);
+    const creatingOrder = await createOrder(order);
 
-    if (res.ok) {
-      setData((prev) => ({
-        ...prev,
-        orders: [...prev.orders, res.data],
-      }));
+    if (creatingOrder.ok) {
+      const newOrder = creatingOrder.data;
 
-      toast.success("Pedido criado com sucesso!", {
+      toast.success(creatingOrder.message, {
         action: (
           <Button className="ml-auto" variant="outline" asChild>
-            <Link href={`/pedidos/${res.data.number}`}>Abrir</Link>
+            <Link href={`/pedidos/${newOrder.number}`}>Abrir</Link>
           </Button>
         ),
       });
@@ -79,72 +70,35 @@ export function OrderForm({
       return;
     }
 
-    switch (res.status) {
-      case 400:
-        toast.warning(
-          "Não foi possível salvar o pedido. Confira os dados do pedido."
-        );
-        break;
-      case 409:
-        toast.warning("Esse pedido já existe.");
-        break;
-      default:
-        toast.error(
-          "Erro interno do servidor. Não foi possível salvar o pedido, tente novamente."
-        );
-        break;
-    }
-  }
-
-  async function handleEdit(order: OrderData) {
-    const res = await updateOrder(order);
-
-    if (res.ok) {
-      setData((prev) => {
-        const orders = [...prev.orders];
-
-        for (let i = 0; i < orders.length; i++) {
-          if (orders[i].number === res.data.number) {
-            orders[i] = res.data;
-            break;
-          }
-        }
-
-        return { ...prev, orders };
-      });
-
-      if (setCanEdit) {
-        setCanEdit(false);
-      }
-
-      toast.success("Pedido modificado com sucesso!");
+    if (creatingOrder.status < 500) {
+      toast.warning(creatingOrder.message);
 
       return;
     }
 
-    switch (res.status) {
-      case 400:
-        toast.warning(
-          "Não foi possível salvar o pedido. Confira os dados do pedido."
-        );
-        break;
-      case 404:
-        toast.warning("Esse pedido não foi encontrado.");
-        break;
-      case 409:
-        toast.warning("Já existe algum pedido com esses dados.");
-        break;
-      default:
-        toast.error(
-          "Erro interno do servidor. Não foi possível salvar o pedido.",
-          {
-            action: (
-              <Button onClick={() => handleEdit(order)}>Tente novamente</Button>
-            ),
-          }
-        );
-        break;
+    toast.error(creatingOrder.message, {
+      action: (
+        <Button onClick={() => handleCreate(order)}>Tente novamente</Button>
+      ),
+    });
+  }
+
+  async function handleEdit(order: OrderData) {
+    const updatingOrder = await updateOrder(order);
+
+    if (updatingOrder.ok) {
+      toast.success(updatingOrder.message);
+
+      if (setCanEdit) setCanEdit(false);
+      return;
     }
+
+    if (updatingOrder.status < 500) {
+      toast.warning(updatingOrder.message);
+      return;
+    }
+
+    toast.error(updatingOrder.message);
   }
 
   return (
@@ -179,7 +133,7 @@ export function OrderForm({
         />
 
         <form.AppField
-          name="clientId"
+          name="client"
           children={(field) => (
             <div className="grid gap-2">
               <Label
@@ -191,8 +145,8 @@ export function OrderForm({
 
               <ClientSelect
                 className="w-full"
-                clientId={field.state.value}
-                setClientId={field.setValue}
+                client={field.state.value}
+                setClient={field.setValue}
                 disabled={canEdit === false}
               />
 

@@ -1,6 +1,10 @@
 import z from "zod";
 
-import { clientSchema } from "@/schemas/client";
+import {
+  clientDataSchema,
+  clientSchema,
+  DEFAULT_CLIENT,
+} from "@/schemas/client";
 import { DEFAULT_PRODUCT, productDataSchema } from "@/schemas/product";
 
 export type State = (typeof ORDER_STATES)[number];
@@ -54,7 +58,8 @@ export const DEFAULT_ORDER_ITEM: OrderItemData = {
 };
 
 export type OrderData = z.infer<typeof orderDataSchema>;
-export const orderDataSchema = orderSchema.extend({
+export const orderDataSchema = orderSchema.omit({ clientId: true }).extend({
+  client: clientDataSchema,
   items: z
     .array(orderItemDataSchema)
     .min(1, "Um pedido deve ter ao menos 1 item"),
@@ -66,5 +71,5 @@ export const DEFAULT_ORDER: OrderData = {
   date: new Date(),
   items: [],
   number: "",
-  clientId: 0,
+  client: DEFAULT_CLIENT,
 };

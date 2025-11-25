@@ -1,10 +1,9 @@
 import * as React from "react";
 
-import { Toaster } from "sonner";
+import { toast } from "sonner";
 
-import { loadData } from "@/actions/data";
+import { loadKeys } from "@/actions/keys";
 import { AppSidebar } from "@/components/layout/app-sidebar";
-import { DataProvider } from "@/components/layout/data-provider";
 import { Section } from "@/components/layout/section";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
@@ -13,8 +12,18 @@ export default async function PagesLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const loadingKeys = await loadKeys();
+
+  if (loadingKeys.status !== 200) {
+    if (loadingKeys.ok) {
+      toast.success(loadingKeys.message);
+    } else {
+      toast.error(loadingKeys.message);
+    }
+  }
+
   return (
-    <DataProvider initialData={loadData()}>
+    <>
       <SidebarProvider>
         <AppSidebar />
 
@@ -24,8 +33,6 @@ export default async function PagesLayout({
           </Section>
         </SidebarInset>
       </SidebarProvider>
-
-      <Toaster position="top-center" richColors />
-    </DataProvider>
+    </>
   );
 }

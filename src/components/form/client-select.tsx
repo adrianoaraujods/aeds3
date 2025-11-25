@@ -4,9 +4,8 @@ import * as React from "react";
 
 import { toast } from "sonner";
 
-import { useData } from "@/hooks/use-data";
 import { cn } from "@/lib/utils";
-import { getClient } from "@/actions/client";
+import { getAllClients } from "@/actions/client";
 import { Text } from "@/components/typography/text";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,27 +24,37 @@ import {
 
 import { CheckIcon, ChevronsUpDownIcon } from "lucide-react";
 
+import type { ClientData } from "@/schemas/client";
+
 export function ClientSelect({
-  clientId,
-  setClientId,
+  client,
+  setClient,
   className,
   ...props
 }: React.ComponentProps<typeof Button> & {
-  clientId: number;
-  setClientId: (clientId: number) => void;
+  client: ClientData;
+  setClient: (client: ClientData) => void;
 }) {
+  const [clients, setClients] = React.useState<ClientData[]>([]);
   const [isOpen, setIsOpen] = React.useState(false);
-  const {
-    data: { clients },
-  } = useData();
-
-  const [clientName, setClientName] = React.useState<string>();
 
   React.useEffect(() => {
-    const client = clients.find(({ id }) => id === clientId);
+    getAllClients().then((res) => {
+      if (!res.ok) {
+        toast.error(res.message);
+        return;
+      }
 
-    setClientName(!client ? undefined : client.name);
-  }, [clientId, clients]);
+      setClients(res.data);
+    });
+  }, []);
+
+  async function handleSelect(clientId: ClientData["id"]) {
+    const client: ClientData = clients.find(({ id }) => id === clientId)!;
+
+    setClient(client);
+    setIsOpen(false);
+  }
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -56,7 +65,7 @@ export function ClientSelect({
           className={cn("w-[200px] justify-between", className)}
           {...props}
         >
-          {clientName || "Selecione..."}
+          {client.name.length === 0 ? "Selecione..." : client.name}
 
           <ChevronsUpDownIcon className="opacity-50" />
         </Button>
@@ -74,25 +83,14 @@ export function ClientSelect({
                 <CommandItem
                   key={id}
                   value={String(id)}
-                  onSelect={async () => {
-                    const res = await getClient(id);
-
-                    if (!res.ok) {
-                      toast.error("Houve algum erro ao carregar o cliente.");
-                      return;
-                    }
-
-                    setClientName(name);
-                    setClientId(id);
-                    setIsOpen(false);
-                  }}
+                  onSelect={() => handleSelect(id)}
                 >
                   <Text>{name}</Text>
 
                   <CheckIcon
                     className={cn(
                       "ml-auto",
-                      id === clientId ? "opacity-100" : "opacity-0"
+                      id === client.id ? "opacity-100" : "opacity-0"
                     )}
                   />
                 </CommandItem>

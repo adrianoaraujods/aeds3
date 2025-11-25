@@ -6,7 +6,6 @@ import Link from "next/link";
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { toast } from "sonner";
 
-import { useData } from "@/hooks/use-data";
 import { formatCNPJ, formatCPF } from "@/lib/utils";
 import { deleteClient } from "@/actions/client";
 import { DataTable } from "@/components/table/data-table";
@@ -33,12 +32,10 @@ import {
 
 import { EllipsisIcon, EyeIcon, Trash2Icon } from "lucide-react";
 
-import type { Client } from "@/schemas/client";
+import type { ClientData } from "@/schemas/client";
 
-export function ClientsTable() {
-  const { data } = useData();
-
-  const table = useReactTable<Client>({
+export function ClientsTable({ clients }: { clients: ClientData[] }) {
+  const table = useReactTable<ClientData>({
     columns: [
       { accessorKey: "name", header: "Nome" },
       { accessorKey: "socialName", header: "Razão Social" },
@@ -71,45 +68,28 @@ export function ClientsTable() {
         cell: ({ row }) => <ClientTableRowMenu client={row.original} />,
       },
     ],
-    data: data.clients,
+    data: clients,
     getCoreRowModel: getCoreRowModel(),
   });
 
   return <DataTable table={table} />;
 }
 
-function ClientTableRowMenu({ client }: { client: Client }) {
-  const { setData } = useData();
-
+function ClientTableRowMenu({ client }: { client: ClientData }) {
   async function handleDelete() {
-    const res = await deleteClient(client.id);
+    const deletingClient = await deleteClient(client.id);
 
-    if (res.ok) {
-      setData((prev) => ({
-        ...prev,
-        clients: prev.clients.filter(({ id }) => id !== client.id),
-      }));
-
-      toast.success("Cliente deletado com sucesso!");
+    if (deletingClient.ok) {
+      toast.success(deletingClient.message);
       return;
     }
 
-    switch (res.status) {
-      case 409:
-        toast.warning(
-          "Não é possível excluir um cliente com outros registros."
-        );
-        break;
-      case 500:
-        toast.error(
-          "Erro interno do servidor. Não foi possível excluir o cliente, tente novamente."
-        );
-        break;
-      default:
-        toast.error(
-          "Existem dados corrompidos no Banco de Dados. Não foi possível excluir o cliente."
-        );
+    if (deletingClient.status < 500) {
+      toast.warning(deletingClient.message);
+      return;
     }
+
+    toast.error(deletingClient.message);
   }
 
   return (

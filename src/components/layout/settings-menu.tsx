@@ -5,9 +5,7 @@ import * as React from "react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 
-import { useData } from "@/hooks/use-data";
 import { createBackup, loadBackup } from "@/actions/backup";
-import { loadData } from "@/actions/data";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -32,7 +30,6 @@ export function SettingsMenu({
   ...props
 }: React.ComponentProps<typeof DropdownMenuTrigger>) {
   const { theme: currentTheme, setTheme } = useTheme();
-  const { setData } = useData();
 
   const themes: {
     [key in Theme]: string;
@@ -46,9 +43,6 @@ export function SettingsMenu({
     const creatingBackup = await createBackup(type);
 
     if (creatingBackup.ok) {
-      const { data } = await loadData();
-      setData(data);
-
       toast.success("Backup criado com sucesso!");
     } else {
       toast.error(creatingBackup.message || "Não foi possível criar o backup.");

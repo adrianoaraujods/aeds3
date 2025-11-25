@@ -1,6 +1,9 @@
 import * as React from "react";
 import Link from "next/link";
 
+import { toast } from "sonner";
+
+import { getAllOrders } from "@/actions/order";
 import { OrdersTable } from "@/components/table/orders-table";
 import { Heading } from "@/components/typography/heading";
 import { Text } from "@/components/typography/text";
@@ -8,7 +11,17 @@ import { Button } from "@/components/ui/button";
 
 import { PlusCircleIcon } from "lucide-react";
 
-export default function OrdersPage() {
+import type { OrderData } from "@/schemas/order";
+
+export default async function OrdersPage() {
+  const retrievingOrders = await getAllOrders();
+
+  if (!retrievingOrders.ok) {
+    toast.error(retrievingOrders.message);
+  }
+
+  const orders: OrderData[] = retrievingOrders.data;
+
   return (
     <>
       <header className="mb-2 flex justify-between border-b">
@@ -25,7 +38,7 @@ export default function OrdersPage() {
         </Button>
       </header>
 
-      <OrdersTable />
+      <OrdersTable orders={orders} />
     </>
   );
 }

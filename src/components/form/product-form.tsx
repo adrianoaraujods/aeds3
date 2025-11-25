@@ -7,7 +7,6 @@ import { revalidateLogic } from "@tanstack/react-form";
 import { toast } from "sonner";
 
 import { useAppForm } from "@/hooks/use-app-form";
-import { useData } from "@/hooks/use-data";
 import { createProduct, updateProduct } from "@/actions/product";
 import { DrawingSelect } from "@/components/form/drawing-select";
 import { Heading } from "@/components/typography/heading";
@@ -34,7 +33,6 @@ export function ProductForm({
   canEdit,
   setCanEdit,
 }: ProductFormProps) {
-  const { setData } = useData();
   const [selectedDrawing, setSelectedDrawing] =
     React.useState<DrawingData>(DEAFULT_DRAWING);
 
@@ -68,20 +66,7 @@ export function ProductForm({
     if (creatingProduct.ok) {
       const createdProduct = creatingProduct.data;
 
-      setData((prev) => {
-        const products = [...prev.products, createdProduct];
-        const drawings = [...prev.drawings];
-
-        for (const drawing of createdProduct.drawings) {
-          if (!drawing.isNew) continue;
-
-          drawings.push(drawing);
-        }
-
-        return { ...prev, products, drawings };
-      });
-
-      toast.success("Produto criado com sucesso!", {
+      toast.success(creatingProduct.message, {
         action: (
           <Button className="ml-auto" variant="outline" asChild>
             <Link href={`/produtos/${createdProduct.id}`}>Abrir</Link>
@@ -90,10 +75,10 @@ export function ProductForm({
       });
 
       form.reset();
-
       return;
     }
 
+    // if the product was not created and the some drawings were
     const createdDrawings = creatingProduct.data;
 
     for (let i = 0, j = 0; i < createdDrawings.length; i++) {
@@ -105,88 +90,38 @@ export function ProductForm({
       });
     }
 
-    setData((prev) => ({
-      ...prev,
-      drawings: [...prev.drawings, ...createdDrawings],
-    }));
-
-    switch (creatingProduct.status) {
-      case 400:
-        toast.warning(
-          "Não foi possível salvar o produto. Confira os dados do produto."
-        );
-        break;
-      case 409:
-        toast.warning("Verifique os desenhos, algum deles já existe.");
-        break;
-      default:
-        toast.error(
-          "Erro interno do servidor. Não foi possível salvar o produto, tente novamente."
-        );
-        break;
+    if (creatingProduct.status < 500) {
+      toast.warning(creatingProduct.message);
+      return;
     }
+
+    toast.error(creatingProduct.message, {
+      action: (
+        <Button onClick={() => handleCreate(product)}>Tente novamente</Button>
+      ),
+    });
   }
 
   async function handleEdit(product: ProductData) {
     const updatingProduct = await updateProduct(product);
 
     if (updatingProduct.ok) {
-      const updatedProduct = updatingProduct.data;
-
-      setData((prev) => {
-        const products = [...prev.products];
-
-        for (let i = 0; i < products.length; i++) {
-          if (products[i].id === updatedProduct.id) {
-            products[i] = updatedProduct;
-            break;
-          }
-        }
-
-        const drawings = [...prev.drawings];
-
-        for (const drawing of updatedProduct.drawings) {
-          if (drawing.isNew) {
-            drawings.push(drawing);
-            form.pushFieldValue("drawings", drawing);
-          }
-        }
-
-        return { ...prev, products };
-      });
+      toast.success(updatingProduct.message);
 
       if (setCanEdit) setCanEdit(false);
-
-      toast.success("Produto modificado com sucesso!");
-
       return;
     }
 
-    switch (updatingProduct.status) {
-      case 400:
-        toast.warning(
-          "Não foi possível salvar o produto. Confira os dados do produto."
-        );
-        break;
-      case 404:
-        toast.warning("Esse produto não foi encontrado.");
-        break;
-      case 409:
-        toast.warning("Já existe algum produto com esses dados.");
-        break;
-      default:
-        toast.error(
-          "Erro interno do servidor. Não foi possível salvar o produto.",
-          {
-            action: (
-              <Button onClick={() => handleEdit(product)}>
-                Tente novamente
-              </Button>
-            ),
-          }
-        );
-        break;
+    if (updatingProduct.status < 500) {
+      toast.warning(updatingProduct.message);
+      return;
     }
+
+    toast.error(updatingProduct.message, {
+      action: (
+        <Button onClick={() => handleEdit(product)}>Tente novamente</Button>
+      ),
+    });
   }
 
   return (
