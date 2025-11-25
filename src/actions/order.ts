@@ -2,7 +2,6 @@
 
 import { RSA } from "@/lib/rsa";
 import { getClient } from "@/actions/client";
-import { File } from "@/actions/file";
 import { getPublicKey } from "@/actions/keys";
 import {
   createOrderItem,
@@ -11,12 +10,13 @@ import {
   getOrderItems,
   updateOrderItem,
 } from "@/actions/order-item";
+import { RecordFile } from "@/actions/record-file";
 import { orderDataSchema, orderSchema } from "@/schemas/order";
 
 import type { ActionResponse, ErrorCode } from "@/lib/config";
 import type { Order, OrderData, OrderItem } from "@/schemas/order";
 
-const file = new File({
+const file = new RecordFile({
   name: "orders",
   schema: orderSchema,
   primaryKey: "number",

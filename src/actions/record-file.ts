@@ -5,7 +5,7 @@ import { BpTree } from "@/lib/bp-tree";
 import { deserialize, serialize } from "@/lib/buffer";
 import { ActionResponse, DATA_FOLDER_PATH } from "@/lib/config";
 
-export class File<
+export class RecordFile<
   Schema extends z.ZodObject,
   PrimaryKey extends keyof z.infer<Schema>,
 > {

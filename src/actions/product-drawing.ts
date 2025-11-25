@@ -1,7 +1,7 @@
 "use server";
 
 import { getDrawing } from "@/actions/drawing";
-import { File } from "@/actions/file";
+import { RecordFile } from "@/actions/record-file";
 import { Drawing } from "@/schemas/drawing";
 import { productDrawingSchema } from "@/schemas/product-drawing";
 
@@ -9,7 +9,7 @@ import type { ActionResponse, ErrorCode } from "@/lib/config";
 import type { Product } from "@/schemas/product";
 import type { ProductDrawing } from "@/schemas/product-drawing";
 
-const file = new File({
+const file = new RecordFile({
   name: "product-drawings",
   schema: productDrawingSchema,
   primaryKey: "id",

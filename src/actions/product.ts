@@ -1,20 +1,20 @@
 "use server";
 
 import { createDrawing, deleteDrawing } from "@/actions/drawing";
-import { File } from "@/actions/file";
 import { getProductOrders } from "@/actions/order-item";
 import {
   createProductDrawing,
   getProductDrawings,
   removeAllProductDrawings,
 } from "@/actions/product-drawing";
+import { RecordFile } from "@/actions/record-file";
 import { productDataSchema, productSchema } from "@/schemas/product";
 
 import type { ActionResponse, ErrorCode } from "@/lib/config";
 import type { Drawing } from "@/schemas/drawing";
 import type { Product, ProductData } from "@/schemas/product";
 
-const file = new File({
+const file = new RecordFile({
   name: "products",
   schema: productSchema,
   primaryKey: "id",

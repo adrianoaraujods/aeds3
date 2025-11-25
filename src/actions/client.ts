@@ -1,12 +1,12 @@
 "use server";
 
-import { File } from "@/actions/file";
+import { RecordFile } from "@/actions/record-file";
 import { clientSchema } from "@/schemas/client";
 
 import type { ActionResponse } from "@/lib/config";
 import type { Client } from "@/schemas/client";
 
-const file = new File({
+const file = new RecordFile({
   name: "clients",
   schema: clientSchema,
   primaryKey: "id",

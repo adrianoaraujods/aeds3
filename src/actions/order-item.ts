@@ -1,10 +1,10 @@
 "use server";
 
 import { RSA } from "@/lib/rsa";
-import { File } from "@/actions/file";
 import { getPrivateKey } from "@/actions/keys";
 import { getOrderData } from "@/actions/order";
 import { getProductData } from "@/actions/product";
+import { RecordFile } from "@/actions/record-file";
 import { orderItemSchema } from "@/schemas/order";
 
 import type { ActionResponse, ErrorCode } from "@/lib/config";
@@ -16,7 +16,7 @@ import type {
 } from "@/schemas/order";
 import type { Product } from "@/schemas/product";
 
-const file = new File({
+const file = new RecordFile({
   name: "order-items",
   schema: orderItemSchema,
   primaryKey: "id",
