@@ -1,6 +1,8 @@
 "use server";
 
+import { RSA } from "@/lib/rsa";
 import { File } from "@/actions/file";
+import { getPrivateKey } from "@/actions/keys";
 import { getOrderData } from "@/actions/order";
 import { getProductData } from "@/actions/product";
 import { orderItemSchema } from "@/schemas/order";
@@ -34,11 +36,14 @@ export async function getOrderItems(
 
   const retrievingItems = file.select("orderNumber", orderNumber);
 
-  if (!retrievingItems.ok) {
-    return { ok: false, status: retrievingItems.status, data: items };
-  }
+  if (!retrievingItems.ok) return { ...retrievingItems, data: items };
 
-  const orderItems = retrievingItems.data;
+  const privateKey = await getPrivateKey();
+
+  const orderItems = retrievingItems.data.map(({ price, ...item }) => ({
+    ...item,
+    price: Number(RSA.decrypt(price, privateKey)),
+  }));
 
   let failedStatus: ErrorCode | undefined;
 

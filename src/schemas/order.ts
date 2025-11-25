@@ -28,7 +28,7 @@ export const orderItemSchema = z.object({
   id: z.uint32(), // primary key
   item: z.string().min(1, "Esse campo deve ser preenchido."),
   deliver: z.date("Data inválida."),
-  price: z.number().positive("Preço inválido."),
+  price: z.bigint().positive("Preço inválido."), // bigint due encryption
   amount: z.number().positive("Quantidade inválida."),
 
   productId: z.uint32(), // foreign key from Product
@@ -41,6 +41,7 @@ export const orderItemDataSchema = orderItemSchema
   .extend({
     id: z.int32(),
     product: productDataSchema,
+    price: z.number().positive("Preço inválido."),
   });
 
 export const DEFAULT_ORDER_ITEM: OrderItemData = {

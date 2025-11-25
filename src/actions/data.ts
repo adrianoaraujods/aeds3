@@ -1,5 +1,8 @@
+"use server";
+
 import { getAllClients, reindexClientsFile } from "@/actions/client";
 import { getAllDrawings, reindexDrawingsFile } from "@/actions/drawing";
+import { loadKeys } from "@/actions/keys";
 import { getAllOrders, reindexOrdersFile } from "@/actions/order";
 import { reindexOrderItemsFile } from "@/actions/order-item";
 import { getAllProducts, reindexProductsFile } from "@/actions/product";
@@ -21,6 +24,8 @@ export type Data = {
 };
 
 export async function loadData(): Promise<ActionResponse<Data, Data>> {
+  const loadingKeys = await loadKeys();
+
   let serverError = false; // 500
 
   const { clients, drawings, products, orders } = await Promise.allSettled([
@@ -66,6 +71,8 @@ export async function loadData(): Promise<ActionResponse<Data, Data>> {
     products,
     orders,
   };
+
+  if (!loadingKeys.ok) return { ...loadingKeys, data };
 
   if (serverError) {
     return { ok: false, status: 500, data };

@@ -1,6 +1,8 @@
 "use server";
 
+import { RSA } from "@/lib/rsa";
 import { File } from "@/actions/file";
+import { getPublicKey } from "@/actions/keys";
 import {
   createOrderItem,
   deleteAllOrderItems,
@@ -34,11 +36,14 @@ export async function createOrder(
 
   let failedStatus: ErrorCode | undefined;
 
+  const publicKey = await getPublicKey();
+
   for (const item of items) {
     const creatingOrderItem = await createOrderItem({
       ...item,
       orderNumber: order.number,
       productId: item.product.id,
+      price: RSA.encrypt(String(item.price), publicKey),
     });
 
     if (!creatingOrderItem.ok) {
@@ -157,6 +162,8 @@ export async function updateOrder(
 
   const oldItems = retrievingOldItems.data.map(({ id }) => id);
 
+  const publicKey = await getPublicKey();
+
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
 
@@ -166,6 +173,7 @@ export async function updateOrder(
       ...item,
       orderNumber: order.number,
       productId: item.product.id,
+      price: RSA.encrypt(String(item.price), publicKey),
     });
 
     if (!creatingItem.ok) {
@@ -196,6 +204,7 @@ export async function updateOrder(
       ...item,
       orderNumber: order.number,
       productId: item.product.id,
+      price: RSA.encrypt(String(item.price), publicKey),
     });
 
     if (!updatingItem.ok) {

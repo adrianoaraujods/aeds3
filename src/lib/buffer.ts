@@ -32,10 +32,16 @@ export function serialize(value: any, schema: z.ZodType): Buffer {
       return numberBuffer;
 
     case "bigint":
-      const bigintBuffer = Buffer.alloc(8);
-      bigintBuffer.writeBigInt64BE(
-        !value ? BigInt("9223372036854775807") : value
-      );
+      // 1. Get the Hex representation of the current value
+      let valHex = BigInt(value || 0).toString(16);
+      if (valHex.length % 2 !== 0) valHex = "0" + valHex;
+
+      // Variable length logic
+      const byteLength = valHex.length / 2;
+      const bigintBuffer = Buffer.alloc(byteLength + 2);
+      bigintBuffer.writeUInt16BE(byteLength);
+      bigintBuffer.write(valHex, 2, "hex");
+
       return bigintBuffer;
 
     case "date":
@@ -48,12 +54,12 @@ export function serialize(value: any, schema: z.ZodType): Buffer {
     case "string":
       const stringValue = value ? String(value) : "";
 
-      const { maxLength } = schema as z.ZodString;
+      const { maxLength: maxString } = schema as z.ZodString;
 
       let stringBuffer: Buffer<ArrayBuffer>;
 
-      if (maxLength) {
-        stringBuffer = Buffer.alloc(maxLength);
+      if (maxString) {
+        stringBuffer = Buffer.alloc(maxString);
         stringBuffer.write(stringValue, "utf-8");
 
         return stringBuffer;
@@ -151,9 +157,21 @@ export function deserialize(
       break;
 
     case "bigint":
-      const bigint = buffer.readBigInt64BE(offset);
-      if (bigint !== BigInt("9223372036854775807")) value = bigint;
-      bytesRead = 8;
+      const byteLength = buffer.readUInt16BE(offset);
+      bytesRead = 2;
+
+      if (byteLength !== 0) {
+        const hexStr = buffer.toString(
+          "hex",
+          offset + bytesRead,
+          offset + bytesRead + byteLength
+        );
+        value = BigInt("0x" + hexStr);
+        bytesRead += byteLength;
+      } else {
+        value = BigInt(0);
+      }
+
       break;
 
     case "date":
@@ -163,12 +181,12 @@ export function deserialize(
       break;
 
     case "string":
-      const { maxLength } = schema as z.ZodString;
+      const { maxLength: maxString } = schema as z.ZodString;
 
       let stringLength: number;
 
-      if (maxLength) {
-        stringLength = maxLength;
+      if (maxString) {
+        stringLength = maxString;
       } else {
         stringLength = buffer.readUInt16BE(offset);
         bytesRead = 2;
@@ -267,21 +285,20 @@ export function getLength(schema: z.ZodType): number {
       break;
 
     case "bigint":
-      bytesRead = 8;
-      break;
+      throw new Error("Cannot get the size of a variable length bigint.");
 
     case "date":
       bytesRead = 8;
       break;
 
     case "string":
-      const { maxLength } = schema as z.ZodString;
+      const { maxLength: maxString } = schema as z.ZodString;
 
-      if (!maxLength) {
+      if (!maxString) {
         throw new Error("Cannot get the size of a variable length string.");
       }
 
-      bytesRead = maxLength;
+      bytesRead = maxString;
       break;
 
     case "array":
