@@ -38,7 +38,11 @@ export async function createOrder(
     };
   }
 
-  const { items, ...order } = parser.data;
+  const {
+    items,
+    client: { id: clientId },
+    ...order
+  } = parser.data;
 
   let failedStatus: ErrorCode | undefined;
 
@@ -61,7 +65,7 @@ export async function createOrder(
   }
 
   if (failedStatus === undefined) {
-    const creatingOrder = file.insert(order);
+    const creatingOrder = file.insert({ ...order, clientId });
 
     if (creatingOrder.ok) {
       return {
