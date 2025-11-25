@@ -15,7 +15,7 @@ type Node<TKey extends z.ZodType> = {
   nextLeafOffset: number;
 };
 
-const ORDER = 5; // 480
+const ORDER = 256;
 const MAX_KEYS = ORDER - 1;
 const MIN_KEYS = Math.ceil(ORDER / 2) - 1;
 
@@ -44,7 +44,6 @@ export class BpTree<TKey extends z.ZodType> {
   }
 
   // TODO: fix bug when not inserting keys in order, breaks leafs linkage
-
   public insert(key: z.infer<TKey>, value: number) {
     // will throw an error if the `key` is invalid
     this.keySchema.parse(key);
@@ -708,7 +707,7 @@ export class BpTree<TKey extends z.ZodType> {
 
     while (low <= high) {
       const mid = Math.floor((low + high) / 2);
-      if (key <= keys[mid]) {
+      if (key < keys[mid]) {
         result = mid;
         high = mid - 1;
       } else {
