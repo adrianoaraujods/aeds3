@@ -121,7 +121,7 @@ export class RecordFile<
   ): ActionResponse<z.infer<Schema>> {
     try {
       const recordOffset = this.indexes[this.primaryKey]!.find(key);
-      if (!recordOffset) {
+      if (recordOffset === null) {
         return {
           ok: false,
           status: 404,

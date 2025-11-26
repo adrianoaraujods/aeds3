@@ -352,8 +352,7 @@ export async function deleteOrder(
   if (!deletingOrder.ok) {
     return {
       ok: false,
-      message:
-        "Houve algum erro ao excluír o pedido! Os itens já foram removidos.",
+      message: "Houve algum erro ao excluír o pedido!",
       status: deletingOrder.status,
     };
   }
