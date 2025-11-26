@@ -35,7 +35,13 @@ import { EllipsisIcon, EyeIcon, Trash2Icon } from "lucide-react";
 import type { ClientData } from "@/schemas/client";
 import type { OrderData } from "@/schemas/order";
 
-export function OrdersTable({ orders }: { orders: OrderData[] }) {
+export function OrdersTable({
+  orders: initialOrders,
+}: {
+  orders: OrderData[];
+}) {
+  const [orders, setOrders] = React.useState(initialOrders);
+
   const table = useReactTable<OrderData>({
     columns: [
       { accessorKey: "number", header: "Número" },
@@ -60,7 +66,12 @@ export function OrdersTable({ orders }: { orders: OrderData[] }) {
       {
         accessorKey: "more",
         header: "",
-        cell: ({ row }) => <OrderTableRowMenu order={row.original} />,
+        cell: ({ row }) => (
+          <OrderTableRowMenu
+            orderNumber={row.original.number}
+            setOrders={setOrders}
+          />
+        ),
       },
     ],
     data: orders,
@@ -70,12 +81,21 @@ export function OrdersTable({ orders }: { orders: OrderData[] }) {
   return <DataTable table={table} />;
 }
 
-function OrderTableRowMenu({ order }: { order: OrderData }) {
+function OrderTableRowMenu({
+  orderNumber,
+  setOrders,
+}: {
+  orderNumber: OrderData["number"];
+  setOrders: React.Dispatch<React.SetStateAction<OrderData[]>>;
+}) {
   async function handleDelete() {
-    const deletingOrder = await deleteOrder(order.number);
+    const deletingOrder = await deleteOrder(orderNumber);
 
     if (deletingOrder.ok) {
       toast.success(deletingOrder.message);
+
+      setOrders((prev) => prev.filter(({ number }) => number !== orderNumber));
+
       return;
     }
 
@@ -98,7 +118,7 @@ function OrderTableRowMenu({ order }: { order: OrderData }) {
         <DropdownMenuContent align="end">
           <DropdownMenuGroup>
             <DropdownMenuItem asChild>
-              <Link href={`/pedidos/${order.number}`}>
+              <Link href={`/pedidos/${orderNumber}`}>
                 <EyeIcon />
 
                 <Text>Ver</Text>

@@ -33,7 +33,13 @@ import { EllipsisIcon, EyeIcon, Trash2Icon } from "lucide-react";
 
 import type { ProductData } from "@/schemas/product";
 
-export function ProductsTable({ products }: { products: ProductData[] }) {
+export function ProductsTable({
+  products: initialProducts,
+}: {
+  products: ProductData[];
+}) {
+  const [products, setProducts] = React.useState(initialProducts);
+
   const table = useReactTable<ProductData>({
     columns: [
       { accessorKey: "code", header: "Código" },
@@ -66,7 +72,12 @@ export function ProductsTable({ products }: { products: ProductData[] }) {
       {
         accessorKey: "more",
         header: "",
-        cell: ({ row }) => <ProductTableRowMenu product={row.original} />,
+        cell: ({ row }) => (
+          <ProductTableRowMenu
+            productId={row.original.id}
+            setProducts={setProducts}
+          />
+        ),
       },
     ],
     data: products,
@@ -76,12 +87,21 @@ export function ProductsTable({ products }: { products: ProductData[] }) {
   return <DataTable table={table} />;
 }
 
-function ProductTableRowMenu({ product }: { product: ProductData }) {
+function ProductTableRowMenu({
+  productId,
+  setProducts,
+}: {
+  productId: ProductData["id"];
+  setProducts: React.Dispatch<React.SetStateAction<ProductData[]>>;
+}) {
   async function handleDelete() {
-    const deletingProduct = await deleteProduct(product.id);
+    const deletingProduct = await deleteProduct(productId);
 
     if (deletingProduct.ok) {
       toast.success(deletingProduct.message);
+
+      setProducts((prev) => prev.filter(({ id }) => id !== productId));
+
       return;
     }
 
@@ -105,7 +125,7 @@ function ProductTableRowMenu({ product }: { product: ProductData }) {
         <DropdownMenuContent align="end">
           <DropdownMenuGroup>
             <DropdownMenuItem asChild>
-              <Link href={`/produtos/${product.id}`}>
+              <Link href={`/produtos/${productId}`}>
                 <EyeIcon />
 
                 <Text>Ver</Text>

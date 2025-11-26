@@ -34,7 +34,13 @@ import { EllipsisIcon, EyeIcon, Trash2Icon } from "lucide-react";
 
 import type { ClientData } from "@/schemas/client";
 
-export function ClientsTable({ clients }: { clients: ClientData[] }) {
+export function ClientsTable({
+  clients: initialClients,
+}: {
+  clients: ClientData[];
+}) {
+  const [clients, setClients] = React.useState(initialClients);
+
   const table = useReactTable<ClientData>({
     columns: [
       { accessorKey: "name", header: "Nome" },
@@ -65,7 +71,12 @@ export function ClientsTable({ clients }: { clients: ClientData[] }) {
       {
         accessorKey: "more",
         header: "",
-        cell: ({ row }) => <ClientTableRowMenu client={row.original} />,
+        cell: ({ row }) => (
+          <ClientTableRowMenu
+            clientId={row.original.id}
+            setClients={setClients}
+          />
+        ),
       },
     ],
     data: clients,
@@ -75,12 +86,21 @@ export function ClientsTable({ clients }: { clients: ClientData[] }) {
   return <DataTable table={table} />;
 }
 
-function ClientTableRowMenu({ client }: { client: ClientData }) {
+function ClientTableRowMenu({
+  clientId,
+  setClients,
+}: {
+  clientId: ClientData["id"];
+  setClients: React.Dispatch<React.SetStateAction<ClientData[]>>;
+}) {
   async function handleDelete() {
-    const deletingClient = await deleteClient(client.id);
+    const deletingClient = await deleteClient(clientId);
 
     if (deletingClient.ok) {
       toast.success(deletingClient.message);
+
+      setClients((prev) => prev.filter(({ id }) => id !== clientId));
+
       return;
     }
 
@@ -104,7 +124,7 @@ function ClientTableRowMenu({ client }: { client: ClientData }) {
         <DropdownMenuContent align="end">
           <DropdownMenuGroup>
             <DropdownMenuItem asChild>
-              <Link href={`/clientes/${client.id}`}>
+              <Link href={`/clientes/${clientId}`}>
                 <EyeIcon />
 
                 <Text>Ver</Text>
