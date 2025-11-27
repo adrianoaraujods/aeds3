@@ -4,6 +4,7 @@ import z from "zod";
 import { BpTree } from "@/lib/bp-tree";
 import { deserialize, serialize } from "@/lib/buffer";
 import { ActionResponse, DATA_FOLDER_PATH } from "@/lib/config";
+import { ExtendableHash } from "@/lib/extendable-hash";
 
 export class RecordFile<
   Schema extends z.ZodObject,
@@ -16,7 +17,7 @@ export class RecordFile<
   private readonly primaryKey: PrimaryKey;
   private readonly uniqueFields: (keyof z.infer<Schema>)[];
   private readonly indexes: {
-    [K in keyof z.infer<Schema>]?: BpTree<any>;
+    [K in keyof z.infer<Schema>]?: BpTree<any> | ExtendableHash<any>;
   } = {};
 
   constructor({
@@ -44,12 +45,25 @@ export class RecordFile<
     const indexedKeys = [...new Set([...this.uniqueFields, ...indexedFields])];
 
     for (const key of indexedKeys) {
-      const tree = new BpTree(
-        DATA_FOLDER_PATH + `indexes/${name}.${String(key)}.bpt`,
-        this.schema.shape[String(key)]
-      );
+      if (
+        schema.shape[String(key)].type !== "string" &&
+        (key === primaryKey || uniqueFields.includes(key))
+      ) {
+        const hash = new ExtendableHash(
+          DATA_FOLDER_PATH + `indexes/${name}.${String(key)}.dir`,
+          DATA_FOLDER_PATH + `indexes/${name}.${String(key)}.bkt`,
+          this.schema.shape[String(key)]
+        );
 
-      this.indexes[key] = tree;
+        this.indexes[key] = hash;
+      } else {
+        const tree = new BpTree(
+          DATA_FOLDER_PATH + `indexes/${name}.${String(key)}.bpt`,
+          this.schema.shape[String(key)]
+        );
+
+        this.indexes[key] = tree;
+      }
     }
   }
 
@@ -142,7 +156,7 @@ export class RecordFile<
       this.invalidate(recordOffset);
 
       for (const indexKey of Object.keys(this.indexes)) {
-        this.indexes[indexKey]!.delete(record[indexKey]);
+        this.indexes[indexKey]!.remove(record[indexKey]);
       }
 
       return {
@@ -286,14 +300,24 @@ export class RecordFile<
       const index = this.indexes[key];
 
       if (index) {
-        const results = index.findRange(value, value);
-
         const records: z.infer<Schema>[] = [];
 
-        for (const result of results) {
-          const record = this.retrieve(result.value);
+        if (index instanceof ExtendableHash) {
+          const recordOffset = index.find(value);
 
-          if (record) records.push(record);
+          if (recordOffset) {
+            const record = this.retrieve(recordOffset);
+
+            if (record) records.push(record);
+          }
+        } else {
+          const results = index.findRange(value, value);
+
+          for (const { value: recordOffset } of results) {
+            const record = this.retrieve(recordOffset);
+
+            if (record) records.push(record);
+          }
         }
 
         return {

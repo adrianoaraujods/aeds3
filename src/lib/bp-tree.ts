@@ -162,7 +162,7 @@ export class BpTree<TKey extends z.ZodType> {
     throw new Error(`Error: failed to promote key: \`${currentKey}\``);
   }
 
-  public delete(key: z.infer<TKey>): boolean {
+  public remove(key: z.infer<TKey>): boolean {
     // will throw an error if the `key` is invalid
     this.keySchema.parse(key);
 
