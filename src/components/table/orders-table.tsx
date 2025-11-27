@@ -101,6 +101,7 @@ function OrderTableRowMenu({
 
     if (deletingOrder.status < 500) {
       toast.warning(deletingOrder.message);
+      return;
     }
 
     toast.error(deletingOrder.message);

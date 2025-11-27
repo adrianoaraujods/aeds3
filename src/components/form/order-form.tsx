@@ -72,7 +72,6 @@ export function OrderForm({
 
     if (creatingOrder.status < 500) {
       toast.warning(creatingOrder.message);
-
       return;
     }
 
