@@ -43,9 +43,10 @@ npm run build && npm run start
 │   ├── 📄 product.ts           %% CRUD Produtos
 │   └── 📄 record-file.ts       %% Implementação genérica para salvar os registros
 │
-├── 📁 app/             %% Pasta das rotas
-├── 📁 components/      %% Pasta dos componentes
-├── 📁 hooks/           %% Pasta para React Hooks
+├── 📁 app/          %% Pasta das rotas
+├── 📁 components/   %% Pasta dos componentes
+├── 📁 hooks/        %% Pasta para React Hooks
+│
 ├── 📁 lib/             %% Pasta para bibliotecas e configurações
 │   ├── 📄 bp-tree.ts   %% Implementação da árvore B+
 │   ├── 📄 config.ts    %% Arquivos com configurações da aplicação
@@ -56,9 +57,9 @@ npm run build && npm run start
 │   ├── 📄 queue.ts     %% Implementação de uma fila simples utilizada no Huffman
 │   └── 📄 utils.ts     %% Funções auxiliares
 │
-├── 📁 schemas/           %% Pasta com as definições dos registros
-│
-└── 📁 styles/   %% Pasta com todos os arquivos CSS
+├── 📁 schemas/   %% Pasta com as definições dos registros
+├── 📁 tests/     %% Pasta com os scripts de testes e criação de dados simulados
+└── 📁 styles/    %% Pasta com todos os arquivos CSS
 
 📄 README.md   %% Esse arquivo
 ```
