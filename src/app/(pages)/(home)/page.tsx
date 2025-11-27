@@ -3,6 +3,7 @@
 import { Heading } from "@/components/typography/heading";
 import { Button } from "@/components/ui/button";
 import { createMockClients } from "@/tests/clients.test";
+import { extendableHashTests } from "@/tests/extendable-hash.test";
 import { createMockOrders } from "@/tests/orders.test";
 import { createMockProducts } from "@/tests/products.test";
 
@@ -29,6 +30,14 @@ export default function HomePage() {
 
           <Button variant="outline" onClick={createMockOrders}>
             Inserir Pedidos
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <Heading>Estruturas de Dados:</Heading>
+
+          <Button variant="outline" onClick={extendableHashTests}>
+            Testar Hash Extensível
           </Button>
         </div>
       </div>
