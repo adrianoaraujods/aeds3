@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { toast } from "sonner";
 
+import { BoyerMoore } from "@/lib/boyer-moore";
 import { KPM } from "@/lib/kpm";
 import { getAllProducts } from "@/actions/product";
 import { Text } from "@/components/typography/text";
@@ -60,9 +61,14 @@ export function ProductSearch() {
       const kmp = new KPM(value);
 
       for (const product of products) {
-        if (kmp.match(product.code).length > 0) results.push(product);
+        const occurrences = kmp.search(product.code);
+        if (occurrences.length > 0) results.push(product);
       }
     } else {
+      for (const product of products) {
+        const occurrences = BoyerMoore.search(product.code, value);
+        if (occurrences.length > 0) results.push(product);
+      }
     }
 
     setResults(results);

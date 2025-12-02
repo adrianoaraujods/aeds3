@@ -1,16 +1,16 @@
 export class KPM {
   private readonly lps: number[];
 
-  constructor(private readonly term: string) {
-    this.lps = Array.from({ length: this.term.length }, () => 0);
+  constructor(private readonly pattern: string) {
+    this.lps = Array.from({ length: this.pattern.length }, () => 0);
 
     let length = 0;
     let i = 1;
 
     this.lps[0] = 0;
 
-    while (i < this.term.length) {
-      if (this.term[i] === this.term[length]) {
+    while (i < this.pattern.length) {
+      if (this.pattern[i] === this.pattern[length]) {
         length++;
         this.lps[i] = length;
         i++;
@@ -25,19 +25,19 @@ export class KPM {
     }
   }
 
-  public match(text: string): number[] {
-    const matches: number[] = [];
+  public search(text: string): number[] {
+    const occurrences: number[] = [];
 
     let i = 0;
     let j = 0;
 
     while (i < text.length) {
-      if (text[i] === this.term[j]) {
+      if (text[i] === this.pattern[j]) {
         i++;
         j++;
 
-        if (j == this.term.length) {
-          matches.push(i - j);
+        if (j == this.pattern.length) {
+          occurrences.push(i - j);
           j = this.lps[j - 1];
         }
       } else if (j > 0) {
@@ -47,6 +47,6 @@ export class KPM {
       }
     }
 
-    return matches;
+    return occurrences;
   }
 }
