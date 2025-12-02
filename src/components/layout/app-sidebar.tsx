@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 
 import { NAVIGATION } from "@/lib/config";
 import { cn } from "@/lib/utils";
+import { ProductSearch } from "@/components/form/product-search";
 import Logo from "@/components/icons/logo";
 import { SettingsMenu } from "@/components/layout/settings-menu";
 import { Heading } from "@/components/typography/heading";
@@ -46,6 +47,14 @@ function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="overflow-hidden">
+        <SidebarGroup>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <ProductSearch />
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarGroup>
+
         {NAVIGATION.map(({ title, items }) => (
           <SidebarGroup key={title}>
             <SidebarGroupLabel>{title}</SidebarGroupLabel>
