@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { toast } from "sonner";
 
+import { KPM } from "@/lib/kpm";
 import { getAllProducts } from "@/actions/product";
 import { Text } from "@/components/typography/text";
 import { Button } from "@/components/ui/button";
@@ -48,10 +49,24 @@ export function ProductSearch() {
 
   // update results
   React.useEffect(() => {
+    if (value.length === 0) {
+      setResults(products);
+      return;
+    }
+
+    const results: ProductData[] = [];
+
     if (isKMP) {
+      const kmp = new KPM(value);
+
+      for (const product of products) {
+        if (kmp.match(product.code).length > 0) results.push(product);
+      }
     } else {
     }
-  }, [value, isKMP, setResults]);
+
+    setResults(results);
+  }, [value, products, isKMP, setResults]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
