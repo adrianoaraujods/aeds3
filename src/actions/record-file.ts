@@ -296,6 +296,8 @@ export class RecordFile<
     key: K,
     value: z.infer<Schema>[K]
   ): ActionResponse<z.infer<Schema>[]> {
+    let fd: number | undefined;
+
     try {
       const index = this.indexes[key];
 
@@ -328,9 +330,47 @@ export class RecordFile<
         };
       }
 
-      // TODO: find manually
+      fd = fs.openSync(this.filePath, "r");
+
+      const stats = fs.fstatSync(fd);
+      const fileSize = stats.size;
+
+      const records: z.infer<Schema>[] = [];
+
+      let offset = this.primaryKey === "id" ? 4 : 0;
+
+      while (offset < fileSize) {
+        const metaBuffer = Buffer.alloc(5);
+
+        if (offset + 5 > fileSize) break;
+
+        fs.readSync(fd, metaBuffer, 0, 5, offset);
+
+        const { value: isValid } = deserialize(metaBuffer, 0, z.boolean());
+        const dataLength = metaBuffer.readUInt32BE(1);
+
+        if (isValid) {
+          const dataBuffer = Buffer.alloc(dataLength);
+          fs.readSync(fd, dataBuffer, 0, dataLength, offset + 5);
+
+          const { value: record } = deserialize(dataBuffer, 0, this.schema);
+
+          if (record[key] === value) records.push(record);
+        }
+
+        offset += 5 + dataLength;
+      }
+
+      return {
+        ok: true,
+        status: 200,
+        message: "Registros encontrados com sucesso!",
+        data: records,
+      };
     } catch (error) {
       console.error(error);
+    } finally {
+      if (fd !== undefined) fs.closeSync(fd);
     }
 
     return {
@@ -368,8 +408,8 @@ export class RecordFile<
           const dataBuffer = Buffer.alloc(dataLength);
           fs.readSync(fd, dataBuffer, 0, dataLength, offset + 5);
 
-          const { value } = deserialize(dataBuffer, 0, this.schema);
-          records.push(value);
+          const { value: record } = deserialize(dataBuffer, 0, this.schema);
+          records.push(record);
         }
 
         offset += 5 + dataLength;
