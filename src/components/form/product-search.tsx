@@ -55,20 +55,15 @@ export function ProductSearch() {
       return;
     }
 
+    const pattern = value.trim();
+    const algorithm = isKMP ? new KPM(pattern) : new BoyerMoore(pattern);
+
     const results: ProductData[] = [];
 
-    if (isKMP) {
-      const kmp = new KPM(value);
-
-      for (const product of products) {
-        const occurrences = kmp.search(product.code);
-        if (occurrences.length > 0) results.push(product);
-      }
-    } else {
-      for (const product of products) {
-        const occurrences = BoyerMoore.search(product.code, value);
-        if (occurrences.length > 0) results.push(product);
-      }
+    for (const product of products) {
+      const text = product.code.trim();
+      const occurrences = algorithm.search(text);
+      if (occurrences.length > 0) results.push(product);
     }
 
     setResults(results);
