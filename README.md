@@ -47,21 +47,19 @@ npm run build && npm run start
 ├── 📁 components/   %% Pasta dos componentes
 ├── 📁 hooks/        %% Pasta para React Hooks
 │
-├── 📁 lib/             %% Pasta para bibliotecas e configurações
-│   ├── 📄 bp-tree.ts   %% Implementação da árvore B+
-│   ├── 📄 config.ts    %% Arquivos com configurações da aplicação
-│   ├── 📄 buffer.ts    %% Implementação da funções de serialização
-│   ├── 📄 huffman.ts   %% Implementação do algoritmo Huffman
-│   ├── 📄 lzw.ts       %% Implementação do algoritmo LZW
-│   ├── 📄 math.ts      %% Funções matemáticas auxiliares ao algoritmo RLA
-│   ├── 📄 queue.ts     %% Implementação de uma fila simples utilizada no Huffman
-│   └── 📄 utils.ts     %% Funções auxiliares
+├── 📁 lib/                     %% Pasta para bibliotecas e configurações
+│   ├── 📄 boyer-moore.ts       %% Implementação do algoritmo Boyer-Moore
+│   ├── 📄 bp-tree.ts           %% Implementação da Árvore B+
+│   ├── 📄 buffer.ts            %% Implementação das funções de serialização
+│   ├── 📄 extendable-hash.ts   %% Implementação do Hash Extensível
+│   ├── 📄 huffman.ts           %% Implementação do algoritmo Huffman
+│   ├── 📄 kpm.ts               %% Implementação do algoritmo KPM
+│   ├── 📄 lzw.ts               %% Implementação do algoritmo LZW
+│   └── 📄 rsa.ts               %% Implementação do algoritmo RLA
 │
 ├── 📁 schemas/   %% Pasta com as definições dos registros
-├── 📁 tests/     %% Pasta com os scripts de testes e criação de dados simulados
-└── 📁 styles/    %% Pasta com todos os arquivos CSS
-
-📄 README.md   %% Esse arquivo
+├── 📁 styles/    %% Pasta com todos os arquivos CSS
+└── 📁 tests/     %% Pasta com os scripts de testes e criação de dados simulados
 ```
 
 ## Descrição de Minimundo
@@ -82,6 +80,7 @@ Um cliente pode fazer vários pedidos de compra, e cada pedido deve estar associ
 
 ## Entregas
 
-- [Formulário 1 (Fase II)](./docs/formulário-1.md)
-- [Formulário 2 (Fase III)](./docs/formulário-2.md)
-- [Formulário 3 (Fase III)](./docs/formulário-3.md)
+- [Formulário 1 (Fase II)](/docs/formulário-1.md)
+- [Formulário 2 (Fase III)](/docs/formulário-2.md)
+- [Formulário 3 (Fase IV)](/docs/formulário-3.md)
+- [Formulário 4 (Fase V)](/docs/formulário-4.md)
