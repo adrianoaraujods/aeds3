@@ -1,5 +1,6 @@
 "use server";
 
+import { getClientOrders } from "@/actions/order";
 import { RecordFile } from "@/actions/record-file";
 import { clientSchema } from "@/schemas/client";
 
@@ -19,8 +20,10 @@ export async function createClient(
   return file.insert(data);
 }
 
-export async function getClient(id: number): Promise<ActionResponse<Client>> {
-  return file.findBy("id", id);
+export async function getClient(
+  clientId: Client["id"]
+): Promise<ActionResponse<Client>> {
+  return file.findBy("id", clientId);
 }
 
 export async function getAllClients(): Promise<ActionResponse<Client[]>> {
@@ -34,9 +37,30 @@ export async function updateClient(
 }
 
 export async function deleteClient(
-  id: number
+  clientId: Client["id"]
 ): Promise<ActionResponse<Client>> {
-  return file.delete(id);
+  const retrievingOrders = await getClientOrders(clientId);
+
+  if (!retrievingOrders.ok) {
+    return {
+      ok: false,
+      status: retrievingOrders.status,
+      message:
+        "Houve algum erro ao recuperar os pedidos do cliente. Não foi possível excluir o cliente.",
+    };
+  }
+
+  const orders = retrievingOrders.data;
+
+  if (orders.length > 0) {
+    return {
+      ok: false,
+      status: 409,
+      message: "Existem pedidos desse cliente, não é permitido sua exclusão.",
+    };
+  }
+
+  return file.delete(clientId);
 }
 
 export async function reindexClientsFile() {

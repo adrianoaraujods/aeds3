@@ -11,6 +11,7 @@ import {
   updateOrderItem,
 } from "@/actions/order-item";
 import { RecordFile } from "@/actions/record-file";
+import { Client } from "@/schemas/client";
 import { orderDataSchema, orderSchema } from "@/schemas/order";
 
 import type { ActionResponse, ErrorCode } from "@/lib/config";
@@ -207,6 +208,10 @@ export async function getAllOrders(): Promise<
     message: "Pedidos recuperados com sucesso!",
     data: orders,
   };
+}
+
+export async function getClientOrders(clientId: Client["id"]) {
+  return file.select("clientId", clientId);
 }
 
 export async function updateOrder(
