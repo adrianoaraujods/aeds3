@@ -2,24 +2,30 @@
 
 ## 1. Qual foi o relacionamento N:N escolhido e quais tabelas ele conecta?
 
-Dois relacionamentos N:N foram necessários e já estão implementados:
+Existem dois relacionamentos N:N no sistema:
 
-1. Produto:Pedido
-2. Produto:Desenho
+1. `order-product`: Pedido-Produto
+2. `product-drawing`: Produto-Desenho
 
 ## 2. Qual estrutura de índice foi utilizada (B+ ou Hash Extensível)? Justifique a escolha.
 
-A estrutura de índices utilizada foi a árvore B+, ela foi escolhida por permitir a busca de todos os elementos com a mesma chave, através de uma busca sequêncial a partir da primeira ocorrência.
+Para montar os relacionamentos, as chaves primárias foram indexadas da seguinte forma:
+
+- Número do Pedido (`orders.number`): Árvore B+ porque o campo é uma string de tamanho variável.
+- Id do Produto (`product.id`): Hash Extensível porque o campo é um inteiro.
+- Número do Desenho (`drawing.number`): Árvore B+ porque o campo é uma string de tamanho variável.
 
 ## 3. Como foi implementada a chave composta da tabela intermediária?
 
-Por uma questão de praticidade, não foi utilizada uma chave composta, a chave primária das tabelas intermédiarias foram um identificador único e incremental.
+Por uma questão de praticidade, ao invés de utilizar uma chave composta, a chave primária das tabelas intermédiarias foram implementadas utilizando um identificador único e incremental (serial).
 
-Para manter um bom desempenho do relacionamento, foi adicionado indíces em cada chave estrangeira do relacionamento.
+Para manter um bom desempenho do relacionamento, foi adicionado índices em cada chave estrangeira do relacionamento.
 
 ## 4. Como é feita a busca eficiente de registros por meio do índice?
 
-Quando um registro é pesquisado por algum campo que esteja indexado, então é utilizado o índice que guarda o par de chave e endereço do arquivo de cada registro. Deste modo, quando uma chave é encontrada no índice, então é retornado o seu endereço, o qual é utilizado para recuperar os dados do mesmo.
+Quando um registro é pesquisado por algum campo que esteja indexado, então é utilizado o índice que guarda o par de chave-endereço do arquivo de cada registro. Deste modo, quando uma chave é encontrada no índice, então é retornado o seu endereço, o qual é utilizado para recuperar os dados do mesmo.
+
+Nos relacionamentos N:N, é utilizado o índice da chave estrangeira da tabela intermediária para recuperar os registros da tabela desejada.
 
 ## 5. Como o sistema trata a integridade referencial (remoção/atualização) entre as tabelas?
 

@@ -10,7 +10,7 @@ Cada tipo de dado é representado da seguinte forma:
 - **`boolean`:** Um byte salva `T` para `true` e `F` para `false` utilizando o _charset_ UTF-8.
 - **`int`:** São utilizados 4 bytes para salvar cada número, aceitando números positivos e negativos.
 - **`number`:** São utilizados 4 bytes para salvar cada número, aceitando números positivos e negativos. Para permitir números fracionários, todo número é salvo como seu produto por 100, o que permite uma precisão de duas casas decimais.
-- **`bigint`:** São utilizados 8 bytes para salvar cada número, aceitando números positivos e negativos.
+- **`bigint`:** São utilizados 2 bytes para indicar quantos bytes irão ocupar, e mais $n$ bytes transformados em uma string hexadecimal para para salvar o número.
 - **`date`:** São convertidas para milissegundos seguindo o padrão Epoch Time e guardados em 8 bytes.
 - **`array`:** Dois bytes são utilizados para indicar quantos elementos, e depois cada dado é serializado de acordo com o seu tipo.
 - **`object`:** São serializado seguindo a ordem de definição e cada valor do objeto é serializado de forma recursiva.
@@ -41,7 +41,28 @@ Adicionalmente foram adicionados índices dos campos únicos de cada registro pa
 
 ## e) Quais tipos de estruturas (hash, B+ Tree, extensível, etc.) foram utilizadas para cada chave de pesquisa?
 
-Todos os índices foram construídos utilizando uma árvore B+, sua implementação pode ser encontrada no arquivo: [bp-tree.ts](/src/lib/bp-tree.ts).
+Os índices em chaves primárias e campos únicos que são inteiros ou strings com tamanho fixo, são indexados utilizando Hash Extensível, implementado no arquivo: [extendable-hash.ts](/src/lib/extendable-hash.ts). Os demais campos indexados foram salvos utilizando Árvores B+, sua implementação pode ser encontrada no arquivo: [bp-tree.ts](/src/lib/bp-tree.ts).
+
+- `clients.document`: Hash Extensível
+- `clients.email`: Árvore B+
+- `clients.id`: Hash Extensível
+- `clients.name`: Árvore B+
+- `clients.registration`: Hash Extensível
+- `clients.socialName`: Árvore B+
+- `clients.number`: Árvore B+
+
+- `order-item.id`: Hash Extensível
+- `order-item.orderNumber`: Árvore B+
+- `order-item.productId`: Árvore B+
+- `order-item.number`: Árvore B+
+
+- `order.numbrt`: Árvore B+
+
+- `product-drawings.id`: Hash Extensível
+- `product-drawings.drawingNumber`: Árvore B+
+- `product-drawings.productId`: Árvore B+
+
+- `product.id`: Hash Extensível
 
 ## f) Como foi implementado o relacionamento 1:N (explique a lógica da navegação entre registros e integridade referencial)?
 
@@ -49,31 +70,40 @@ A implementação dos relacionamentos 1:N consistem em uma propriedade no objeto
 
 Deste modo, para acessar os registros do lado N, basta utilizar o índice da chave primária para encontrar cada um.
 
-Normalmente não é permitido a exclusão de um registro que está sendo referenciado, o único caso que isso é permitido é quando um item de pedido é removido. Neste caso, é utilizado a propriedade `orderNumber` para atualizar os itens do pedido fazendo o uso do índice da chave primária de pedidos.
-
-Um exemplo do caso que não é permitido, é ao tentar excluir um produto que está presente em algum item de pedido. Neste caso, o sistema irá mostrar um erro indicando que essa operação não é permitida. Para isso, é verificado na tabela `order-item` pelo campo `productId`, caso retorne algum valor, então quer dizer que existe algum pedido com esse produto.
+O único relacionamento 1:N é Cliente-Pedido, nesse caso, não é permitido excluir um Cliente (`client`) que tenha Pedidos (`order`). Essa lógica está disponível na função: [`deleteClient`](/src/actions/client.ts).
 
 ## g) Como os índices são persistidos em disco? (formato, atualização, sincronização com os dados).
 
-Os índices são armazenas em nós da árvore B+, eles possuem a seguinte estrutura:
+Os índices de Hash Extensível são armazenas em _Buckets_, eles possuem a seguinte estrutura:
 
 ```ts
-type Node<T> = {
-  isLeaf: boolean; // 1 byte
-  keys: T[]; // 2 bytes para indicar o tamanho + x * n bytes
-  pointers: number[]; // 2 bytes para indicar o tamanho + 4 * n bytes
-  nextLeafOffset: number; // 4 bytes
+type Pair<T> = { key: T; value: number };
+
+type Bucket<T> = {
+  localDepth: number; // 1 byte
+  pairs: Pair<TKey>[]; // quantidade de pares * (b bytes da chave + 4 bytes)
 };
 ```
 
-Quando eles são salvos em disco, é adicionado 2 bytes no início para indicar o tamanho (em bytes) daquele nó. O conteúdo de cada nó é serializado utilizando a mesma função que é utilizada para os registros.
+A quantidade de pares é calculada usando a seguinte fórmula:
 
-Ao salvar um novo nó em disco, ele é anexado no seu fim, isso faz com que o arquivo fique fragmentado. Eventualmente será implementado uma função para desfragmentar o arquivo, ela será utilizada principalmente quando o arquivo for ser compactado.
+$$
+\text{Quantidade de Pares} = \Bigg\lfloor \dfrac
+  {\text{Tamanho do Bloco} - \text{Tamanho do Header}}
+  {\text{Tamanho do Par}}
+\Bigg\rfloor
+$$
 
-Quando o valor de um registro que está indexado é atualizado, então o nó é sobrescrito na mesma posição já que seu tamanho não irá mudar.
+Se sobrarem bytes não utilizados no bloco, eles serão escritos como `0`.
+
+Apesar de não haver necessidade, no _Header_ também é utilizado 2 bytes para indicar a quantidade de chaves no Bucket. Nos casos de uso, eles seriam inutilizados de qualquer forma.
+
+Cada par é salvo como $n$ bytes para a chave e 4 bytes para o _offset_ do registro no arquivo de dados.
+
+Quando o valor de um registro que está indexado é atualizado, então o Bucket inteiro onde ele está localizado será sobrescrito com o _offset_ atualizado.
 
 ## h) Como está estruturado o projeto no GitHub (pastas, módulos, arquitetura)?
 
 O projeto foi feito utilizando o [Next.js](https://nextjs.org) como _framework_, juntamente com [TypeScript](https://www.typescriptlang.org) e [Zod](https://zod.dev) para garantir _type safety_ e [Tailwind CSS](https://tailwindcss.com) para a estilização.
 
-A estrutura das pastas pode ser encontrada no arquivo: [README.md](/README.md#estrutura-do-projeto)
+A estrutura das pastas pode ser encontrada no arquivo: [README.md](/README.md#estrutura-do-projeto).
